@@ -9,18 +9,36 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: '#17150F',
+    background: '#FFFFFF',
+    backgroundElement: '#F6F4F0',
+    backgroundSelected: '#FBF0E3',
+    textSecondary: '#55504A',
+    textMuted: '#696257',
+    accent: '#9A5518',
+    onAccent: '#FFFFFF',
+    border: '#E3DFD8',
+    borderStrong: '#938B80',
+    danger: '#B3261E',
+    hero: '#17150F',
+    onHero: '#FFFFFF',
+    onHeroSecondary: '#B5AEA3',
   },
   dark: {
     text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    background: '#17150F',
+    backgroundElement: '#17150F',
+    backgroundSelected: '#55504A',
+    textSecondary: '#B5AEA3',
+    textMuted: '#B5AEA3',
+    accent: '#D18A45',
+    onAccent: '#17150F',
+    border: '#55504A',
+    borderStrong: '#938B80',
+    danger: '#F08A82',
+    hero: '#17150F',
+    onHero: '#FFFFFF',
+    onHeroSecondary: '#B5AEA3',
   },
 } as const;
 
@@ -55,11 +73,24 @@ export const Spacing = {
   half: 2,
   one: 4,
   two: 8,
+  small: 12,
   three: 16,
   four: 24,
   five: 32,
+  large: 48,
   six: 64,
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
+
+export const LoginTypography = {
+  body: { fontFamily: 'Manrope', fontSize: 14, lineHeight: 22 },
+  lead: { fontFamily: 'Manrope', fontSize: 17, lineHeight: 26 },
+  title: { fontFamily: 'Manrope', fontSize: 34, lineHeight: 38, fontWeight: '800', letterSpacing: -0.85 },
+  label: { fontFamily: 'Manrope', fontSize: 11, lineHeight: 16, fontWeight: '600', letterSpacing: 0.88, textTransform: 'uppercase' },
+  button: { fontFamily: 'Manrope', fontSize: 16, lineHeight: 22, fontWeight: '600' },
+} as const;
+
+export const Radius = { control: 6, panel: 10, card: 16, pill: 999 } as const;
+export const ControlSize = { input: 44, primary: 52, touch: 44 } as const;
