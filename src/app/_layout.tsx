@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { AuthProvider } from '@/hooks/use-auth';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -20,10 +21,14 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <AuthProvider>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" options={{ title: 'Connexion · LOG' }} />
+        <Stack.Screen name="home" options={{ title: 'Accueil · LOG' }} />
+        <Stack.Screen name="auth-callback" options={{ title: 'Connexion · LOG' }} />
       </Stack>
+      </AuthProvider>
     </ThemeProvider>
   );
 }
