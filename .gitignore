@@ -1,3 +1,4 @@
+
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 .claude/
 .idea/
@@ -48,3 +49,36 @@ example
 # generated native folders
 /ios
 /android
+=======
+### Dependances ###
+node_modules/
+
+### Expo / build ###
+.expo/
+dist/
+web-build/
+*.tsbuildinfo
+
+### Secrets et configuration locale ###
+.env
+.env.*
+!.env.example
+google-services.json
+GoogleService-Info.plist
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+
+### Logs ###
+*.log
+npm-debug.log*
+
+### IDE ###
+.idea/
+.vscode/
+*.iml
+
+### OS ###
+.DS_Store
+Thumbs.db
