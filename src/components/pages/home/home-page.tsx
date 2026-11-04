@@ -1,7 +1,7 @@
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { LoginBrand } from '@/components/pages/login/login-brand';
+import { SideMenu } from '@/components/side-menu';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ControlSize, LoginTypography, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
@@ -18,7 +18,7 @@ export function HomePage() {
       <SafeAreaView style={styles.root}>
         <ScrollView contentContainerStyle={styles.scroll}>
           <View style={styles.content}>
-            <LoginBrand />
+            <SideMenu />
             <View style={styles.heading}>
               <ThemedText style={LoginTypography.label} themeColor="textMuted">Accueil</ThemedText>
               <ThemedText accessibilityRole="header" style={LoginTypography.title}>
