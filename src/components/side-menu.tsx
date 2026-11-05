@@ -1,15 +1,19 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LoginBrand } from '@/components/pages/login/login-brand';
+import { CategoryForm } from '@/components/pages/home/category-form';
 import { ThemedText } from '@/components/themed-text';
 import { ControlSize, LoginTypography, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
+import { type CatalogFilters } from '@/services/catalog';
 
-export function SideMenu() {
+export function SideMenu({ filters, onApplyFilters, onHome }: { filters: CatalogFilters; onApplyFilters: (filters: CatalogFilters) => void; onHome: () => void }) {
   const [open, setOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const { user, busy, signOut } = useAuth();
   const theme = useTheme();
   const close = () => setOpen(false);
@@ -23,7 +27,7 @@ export function SideMenu() {
           accessibilityRole="button"
           accessibilityLabel="Ouvrir le menu"
           accessibilityState={{ expanded: open }}
-          onPress={() => setOpen(true)}
+          onPress={() => { setCategoriesOpen(false); setOpen(true); }}
           style={({ pressed }) => [styles.iconButton, { borderColor: theme.border }, pressed && styles.dimmed]}>
           <ThemedText accessible={false} style={styles.icon}>☰</ThemedText>
         </Pressable>
@@ -59,11 +63,19 @@ export function SideMenu() {
               </View>
               <Pressable
                 accessibilityRole="button"
-                accessibilityState={{ selected: true }}
-                onPress={close}
+                accessibilityState={{ selected: !categoriesOpen }}
+                onPress={() => { onHome(); close(); router.navigate('/home'); }}
                 style={({ pressed }) => [styles.menuItem, { backgroundColor: theme.backgroundSelected }, pressed && styles.dimmed]}>
                 <ThemedText style={LoginTypography.button}>Accueil</ThemedText>
               </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ expanded: categoriesOpen }}
+                onPress={() => setCategoriesOpen(current => !current)}
+                style={({ pressed }) => [styles.menuItem, { borderColor: theme.border, borderWidth: 1, backgroundColor: categoriesOpen ? theme.backgroundSelected : theme.background }, pressed && styles.dimmed]}>
+                <ThemedText style={LoginTypography.button}>Catégories {categoriesOpen ? '−' : '+'}</ThemedText>
+              </Pressable>
+              {categoriesOpen && <CategoryForm filters={filters} onApply={next => { onApplyFilters(next); close(); }} />}
               <View style={styles.spacer} />
               <Pressable
                 accessibilityRole="button"
