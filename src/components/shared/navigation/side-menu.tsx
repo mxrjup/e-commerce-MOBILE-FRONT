@@ -1,11 +1,12 @@
+﻿import { canAccessDashboard } from '@/services/authorization';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { LoginBrand } from '@/components/pages/login/login-brand';
-import { CategoryForm } from '@/components/pages/home/category-form';
-import { ThemedText } from '@/components/themed-text';
+import { LoginBrand } from '@/components/shared/brand/login-brand';
+import { CategoryForm } from '@/components/shared/catalog/category-form';
+import { ThemedText } from '@/components/shared/ui/themed-text';
 import { ControlSize, LoginTypography, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
@@ -76,6 +77,11 @@ export function SideMenu({ filters, onApplyFilters, onHome }: { filters: Catalog
                 <ThemedText style={LoginTypography.button}>Catégories {categoriesOpen ? '−' : '+'}</ThemedText>
               </Pressable>
               {categoriesOpen && <CategoryForm filters={filters} onApply={next => { onApplyFilters(next); close(); }} />}
+              {canAccessDashboard(user) && <Pressable accessibilityRole="button"
+                onPress={() => { close(); router.navigate('/dashboard'); }}
+                style={({ pressed }) => [styles.menuItem, { borderColor: theme.border, borderWidth: 1 }, pressed && styles.dimmed]}>
+                <ThemedText style={LoginTypography.button}>Dashboard</ThemedText>
+              </Pressable>}
               <View style={styles.spacer} />
               <Pressable
                 accessibilityRole="button"
@@ -106,3 +112,4 @@ const styles = StyleSheet.create({
   spacer: { flex: 1 },
   dimmed: { opacity: 0.75 },
 });
+

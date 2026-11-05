@@ -22,7 +22,7 @@
 ## Information architecture
 - `/`: existing login; `/home`: storefront with horizontal product rows grouped by type; `/product/[id]`: product detail and related items.
 - The sidebar owns the Catégories entry. Clicking it expands a form with product type, brand and minimum/maximum price. Submitting closes the sidebar and filters the homepage rows.
-- Page components live outside routing. Reuse product cards, image fallbacks and selection controls in `components/shared/`.
+- Page components live outside routing in `src/components/pages/<page>/`. Reusable components live in `src/components/shared/<domain>/`, grouped by their responsibility.
 
 ## Design principles
 - Amber identifies actions; explicit text identifies errors.
@@ -37,7 +37,10 @@
 
 ## Components
 - Reuse ThemedText, ThemedView, useTheme, and useColorScheme.
-- Page, brand, and form are page-only components in `components/pages/login/`.
+- Keep one component per file, named in kebab-case after its exported component. Keep its props and styles in that file; do not bundle unrelated components into files such as `catalog-ui.tsx`.
+- Group shared components by domain: `shared/product/` for ProductImage and ProductCard, `shared/catalog/` for CategoryForm, `shared/forms/` for Choice, `shared/navigation/` for SideMenu, `shared/brand/` for LoginBrand, and `shared/ui/` for ThemedText and ThemedView.
+- Page-specific components stay in `pages/<page>/`: for example, LoginPage and LoginForm belong to `pages/login/`. Promote a component into the appropriate shared domain when it is reused outside its page.
+- Shared components may compose other shared components, but must not import from `pages/`. Import components directly from their individual files.
 - Extend the existing theme.ts tokens; no additional theme file or dependencies.
 
 ## Accessibility
@@ -46,6 +49,7 @@
 - Support text scaling, safe areas, scrolling, keyboard avoidance, and reduced motion.
 
 ## Responsive behavior
+- Dashboard: restrained back-office layout with a warm canvas, six metric cards, a contrasting stock valuation card, category distribution bars and a separate low-stock panel. Keep data visibly labelled as demonstration data; do not invent trends or live status. Stack panels on phones and show them side by side from 900px, adjusted for font scaling. Dashboard components live in `pages/dashboard/`; route files own access checks.
 - Preserve login layout and the homepage hero. Homepage scrolls vertically through product types; each type has a horizontal product carousel within 1200px.
 - Product cards are at most 280px wide. The category form stays in the scrollable sidebar. Product details use two columns from 800px.
 

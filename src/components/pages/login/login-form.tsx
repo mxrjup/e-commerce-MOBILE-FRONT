@@ -1,6 +1,6 @@
 ﻿import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
+import { ThemedText } from '@/components/shared/ui/themed-text';
 import { ControlSize, LoginTypography, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
-import { Choice } from '@/components/shared/catalog-ui';
-import { ThemedText } from '@/components/themed-text';
+import { Choice } from '@/components/shared/forms/choice';
+import { ThemedText } from '@/components/shared/ui/themed-text';
 import { LoginTypography, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { categories, defaultFilters, filterProducts, products, validPriceRange, type CatalogFilters } from '@/services/catalog';

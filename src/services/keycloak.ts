@@ -1,11 +1,11 @@
-export type KeycloakConfig = { issuer: string; clientId: string };
+﻿export type KeycloakConfig = { issuer: string; clientId: string };
 export type Tokens = {
   access_token: string;
   refresh_token?: string;
   id_token?: string;
   expires_in: number;
 };
-export type User = { sub: string; name?: string; preferred_username?: string; email?: string };
+export type User = { roles?: string[]; sub: string; name?: string; preferred_username?: string; email?: string };
 
 export class KeycloakError extends Error {
   constructor(public code: string) {
@@ -63,3 +63,4 @@ export async function revokeRefreshToken(config: KeycloakConfig, token: string) 
   });
   if (!response.ok) throw new KeycloakError('revocation_error');
 }
+

@@ -1,9 +1,11 @@
 import { Link, router } from 'expo-router';
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Choice, ProductCard, ProductImage } from '@/components/shared/catalog-ui';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { Choice } from '@/components/shared/forms/choice';
+import { ProductCard } from '@/components/shared/product/product-card';
+import { ProductImage } from '@/components/shared/product/product-image';
+import { ThemedText } from '@/components/shared/ui/themed-text';
+import { ThemedView } from '@/components/shared/ui/themed-view';
 import { LoginTypography, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { categories, formatPrice, getProduct, products } from '@/services/catalog';

@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState } from 'react';
 import { FlatList, StyleSheet, TextInput, type TextInputInstance, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SideMenu } from '@/components/side-menu';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Choice, ProductCard } from '@/components/shared/catalog-ui';
+import { SideMenu } from '@/components/shared/navigation/side-menu';
+import { ThemedText } from '@/components/shared/ui/themed-text';
+import { ThemedView } from '@/components/shared/ui/themed-view';
+import { Choice } from '@/components/shared/forms/choice';
+import { ProductCard } from '@/components/shared/product/product-card';
 import { LoginTypography, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { categories, defaultFilters, filterProducts, products, type CatalogFilters } from '@/services/catalog';
