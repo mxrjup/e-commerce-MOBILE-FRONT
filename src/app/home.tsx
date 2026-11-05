@@ -2,7 +2,7 @@ import { Redirect } from 'expo-router';
 import { ActivityIndicator, StyleSheet } from 'react-native';
 
 import { HomePage } from '@/components/pages/home/home-page';
-import { ThemedView } from '@/components/themed-view';
+import { ThemedView } from '@/components/shared/ui/themed-view';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
 

@@ -1,12 +1,12 @@
 ﻿import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { ThemedText } from '@/components/shared/ui/themed-text';
+import { ThemedView } from '@/components/shared/ui/themed-view';
 import { LoginTypography, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-import { LoginBrand } from './login-brand';
+import { LoginBrand } from '@/components/shared/brand/login-brand';
 import { LoginForm } from './login-form';
 
 export function LoginPage() {
