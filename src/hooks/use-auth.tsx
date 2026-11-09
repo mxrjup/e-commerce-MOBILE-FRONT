@@ -1,4 +1,3 @@
-import { tokenRoles } from '@/services/authorization';
 import { CodeChallengeMethod, makeRedirectUri, Prompt, ResponseType, useAuthRequest } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -45,8 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, discovery);
 
   async function accept(tokens: Tokens) {
-    const profile = await fetchUser(config, tokens.access_token);
-    const user = { ...profile, roles: tokenRoles(tokens.access_token, config.clientId) };
+    const user = await fetchUser(config, tokens.access_token);
     await writeRefreshToken(tokens.refresh_token || null);
     const next = { tokens, user, expiresAt: Date.now() + tokens.expires_in * 1000 };
     current.current = next;

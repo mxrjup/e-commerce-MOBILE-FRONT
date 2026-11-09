@@ -5,7 +5,7 @@ export type Tokens = {
   id_token?: string;
   expires_in: number;
 };
-export type User = { roles?: string[]; sub: string; name?: string; preferred_username?: string; email?: string };
+export type User = { sub: string; name?: string; preferred_username?: string; email?: string };
 
 export class KeycloakError extends Error {
   constructor(public code: string) {
