@@ -3,8 +3,8 @@
 ## Source of truth
 - Status: Active. Last refreshed: 2026-11-05.
 - Surface: Expo customer mobile app and responsive web preview.
-- Evidence: `AGENT.md`, `mobile/AGENTS.md`, `mobile/design/DESIGN-log.md`, theme and themed components.
-- The detailed specification exists at `mobile/design/DESIGN-log.md`; the `design_system.md` reference in AGENT.md is stale.
+- Evidence: `AGENT.md`, `AGENTS.md`, [design/DESIGN-log.md](design/DESIGN-log.md), theme and themed components. Paths are relative to the root of the `e-commerce-MOBILE-FRONT` repository.
+- The detailed specification exists at [design/DESIGN-log.md](design/DESIGN-log.md); the `design_system.md` reference in AGENT.md is stale.
 
 ## Brand
 - Warm, restrained technology store: PCs, smartphones, components and peripherals. Preserve the existing LOG identity and amber theme.
@@ -20,7 +20,7 @@
 - Customers choosing computing equipment, primarily on phones, with responsive web support.
 
 ## Information architecture
-- `/`: existing login; `/home`: storefront with horizontal product rows grouped by type; `/product/[id]`: product detail and related items.
+- `/`: redirects to `/home` without requiring sign-in; `/login`: optional Keycloak login with a return button at the top left; `/home`: storefront with horizontal product rows grouped by type; `/product/[id]`: product detail and related items.
 - The sidebar owns the Catégories entry. Clicking it expands a form with product type, brand and minimum/maximum price. Submitting closes the sidebar and filters the homepage rows.
 - Page components live outside routing in `src/components/pages/<page>/`. Reusable components live in `src/components/shared/<domain>/`, grouped by their responsibility.
 
@@ -30,7 +30,7 @@
 - Preserve form values on recoverable errors.
 
 ## Visual language
-- Palette, type, spacing, and shapes follow `mobile/design/DESIGN-log.md`.
+- Palette, type, spacing, and shapes follow [design/DESIGN-log.md](design/DESIGN-log.md).
 - Bundle Manrope locally with its OFL license; no runtime font CDN.
 - Controls: 6px radius, 44px minimum; primary action: 52px.
 - No animation; preserve the existing logo. Catalog photos are remote illustrations with a text fallback on failure.
@@ -49,7 +49,6 @@
 - Support text scaling, safe areas, scrolling, keyboard avoidance, and reduced motion.
 
 ## Responsive behavior
-- Dashboard: restrained back-office layout with a warm canvas, six metric cards, a contrasting stock valuation card, category distribution bars and a separate low-stock panel. Keep data visibly labelled as demonstration data; do not invent trends or live status. Stack panels on phones and show them side by side from 900px, adjusted for font scaling. Dashboard components live in `pages/dashboard/`; route files own access checks.
 - Preserve login layout and the homepage hero. Homepage scrolls vertically through product types; each type has a horizontal product carousel within 1200px.
 - Product cards are at most 280px wide. The category form stays in the scrollable sidebar. Product details use two columns from 800px.
 
