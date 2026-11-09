@@ -1,4 +1,4 @@
-﻿import { useFonts } from 'expo-font';
+import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -24,7 +24,8 @@ export default function RootLayout() {
       <AuthProvider>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" options={{ title: 'Connexion · LOG' }} />
+        <Stack.Screen name="index" options={{ title: 'Accueil · LOG' }} />
+        <Stack.Screen name="login" options={{ title: 'Connexion · LOG' }} />
         <Stack.Screen name="home" options={{ title: 'Accueil · LOG' }} />
         <Stack.Screen name="auth-callback" options={{ title: 'Connexion · LOG' }} />
       </Stack>

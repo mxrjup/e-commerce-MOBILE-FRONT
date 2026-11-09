@@ -1,7 +1,9 @@
-﻿import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { router } from 'expo-router';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/shared/ui/themed-text';
+import { Choice } from '@/components/shared/forms/choice';
 import { ThemedView } from '@/components/shared/ui/themed-view';
 import { LoginTypography, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -34,6 +36,9 @@ export function LoginPage() {
                 </View>
               )}
               <View style={[styles.main, wide && styles.mainWide]}>
+                <View style={styles.backButton}>
+                  <Choice label="←" onPress={() => router.replace('/home')} />
+                </View>
                 <View style={styles.topbar}>
                   {!wide ? <LoginBrand /> : <ThemedText style={LoginTypography.label} themeColor="textMuted">Votre espace personnel</ThemedText>}
                   <ThemedText style={LoginTypography.label} themeColor="textMuted">FR</ThemedText>
@@ -70,6 +75,7 @@ const styles = StyleSheet.create({
   storyFooter: { borderTopWidth: 1, paddingTop: Spacing.four, flexDirection: 'row', justifyContent: 'space-between' },
   main: { flex: 1, paddingHorizontal: Spacing.four },
   mainWide: { paddingHorizontal: Spacing.large },
+  backButton: { alignSelf: 'flex-start', paddingTop: Spacing.four },
   topbar: { paddingVertical: Spacing.five, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   formArea: { flex: 1, justifyContent: 'center', alignSelf: 'center', width: '100%', maxWidth: 400, paddingVertical: Spacing.large, gap: Spacing.five },
   heading: { gap: Spacing.three },

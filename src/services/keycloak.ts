@@ -1,4 +1,4 @@
-﻿export type KeycloakConfig = { issuer: string; clientId: string };
+export type KeycloakConfig = { issuer: string; clientId: string };
 export type Tokens = {
   access_token: string;
   refresh_token?: string;

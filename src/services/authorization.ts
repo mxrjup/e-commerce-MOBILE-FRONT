@@ -1,4 +1,4 @@
-﻿import type { User } from './keycloak';
+import type { User } from './keycloak';
 
 export function canAccessDashboard(user: User | null) {
   return !!user?.roles?.some(role => ['admin', 'collaborator'].includes(role.toLowerCase()));

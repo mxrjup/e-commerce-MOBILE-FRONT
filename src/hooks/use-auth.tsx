@@ -1,4 +1,4 @@
-﻿import { tokenRoles } from '@/services/authorization';
+import { tokenRoles } from '@/services/authorization';
 import { CodeChallengeMethod, makeRedirectUri, Prompt, ResponseType, useAuthRequest } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';

@@ -1,4 +1,4 @@
-﻿import { canAccessDashboard } from '@/services/authorization';
+import { canAccessDashboard } from '@/services/authorization';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -18,8 +18,6 @@ export function SideMenu({ filters, onApplyFilters, onHome }: { filters: Catalog
   const { user, busy, signOut } = useAuth();
   const theme = useTheme();
   const close = () => setOpen(false);
-
-  if (!user) return null;
 
   return (
     <>
@@ -59,8 +57,8 @@ export function SideMenu({ filters, onApplyFilters, onHome }: { filters: Catalog
               </View>
               <View style={[styles.account, { borderColor: theme.border }]}>
                 <ThemedText style={LoginTypography.label} themeColor="textMuted">Mon compte</ThemedText>
-                <ThemedText style={LoginTypography.lead}>{user.name || user.preferred_username || 'Votre compte'}</ThemedText>
-                {!!user.email && <ThemedText style={LoginTypography.body} themeColor="textSecondary">{user.email}</ThemedText>}
+                <ThemedText style={LoginTypography.lead}>{user ? user.name || user.preferred_username || 'Votre compte' : 'Invité'}</ThemedText>
+                {!!user?.email && <ThemedText style={LoginTypography.body} themeColor="textSecondary">{user.email}</ThemedText>}
               </View>
               <Pressable
                 accessibilityRole="button"
@@ -85,11 +83,11 @@ export function SideMenu({ filters, onApplyFilters, onHome }: { filters: Catalog
               <View style={styles.spacer} />
               <Pressable
                 accessibilityRole="button"
-                accessibilityState={{ disabled: busy, busy }}
-                disabled={busy}
-                onPress={() => { close(); void signOut(); }}
-                style={({ pressed }) => [styles.menuItem, { borderColor: theme.border, borderWidth: 1 }, (pressed || busy) && styles.dimmed]}>
-                <ThemedText style={LoginTypography.button} themeColor="danger">Se déconnecter</ThemedText>
+                accessibilityState={{ disabled: !!user && busy, busy: !!user && busy }}
+                disabled={!!user && busy}
+                onPress={() => { close(); if (user) { void signOut(); } else { router.navigate('/login'); } }}
+                style={({ pressed }) => [styles.menuItem, { borderColor: theme.border, borderWidth: 1 }, (pressed || (!!user && busy)) && styles.dimmed]}>
+                <ThemedText style={LoginTypography.button} themeColor={user ? 'danger' : 'text'}>{user ? 'Se déconnecter' : 'Se connecter'}</ThemedText>
               </Pressable>
             </ScrollView>
           </SafeAreaView>

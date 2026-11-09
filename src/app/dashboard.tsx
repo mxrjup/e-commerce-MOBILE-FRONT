@@ -8,7 +8,7 @@ import { canAccessDashboard } from '@/services/authorization';
 export default function Dashboard() {
   const { user, busy } = useAuth();
   if (!user && busy) return <ThemedView style={styles.loading}><ActivityIndicator accessibilityLabel="Chargement" /></ThemedView>;
-  if (!user) return <Redirect href="/" />;
+  if (!user) return <Redirect href="/login" />;
   if (!canAccessDashboard(user)) return <Redirect href="/home" />;
   return <DashboardPage name={user.name || user.preferred_username || 'équipe LOG'} />;
 }
