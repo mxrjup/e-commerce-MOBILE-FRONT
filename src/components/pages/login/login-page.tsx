@@ -37,7 +37,7 @@ export function LoginPage() {
               )}
               <View style={[styles.main, wide && styles.mainWide]}>
                 <View style={styles.backButton}>
-                  <Choice label="←" onPress={() => router.replace('/home')} />
+                  <Choice label="←" accessibilityLabel="Retour à l'accueil" onPress={() => router.replace('/home')} />
                 </View>
                 <View style={styles.topbar}>
                   {!wide ? <LoginBrand /> : <ThemedText style={LoginTypography.label} themeColor="textMuted">Votre espace personnel</ThemedText>}

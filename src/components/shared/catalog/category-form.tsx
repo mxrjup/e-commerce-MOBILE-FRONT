@@ -11,6 +11,12 @@ export function CategoryForm({ filters, onApply }: { filters: CatalogFilters; on
   const [draft, setDraft] = useState(filters);
   const [submitted, setSubmitted] = useState(false);
   const update = (patch: Partial<CatalogFilters>) => setDraft(current => ({ ...current, ...patch }));
+  const toggleBrand = (brand: string) => setDraft(current => ({
+    ...current,
+    brands: current.brands.includes(brand)
+      ? current.brands.filter(selected => selected !== brand)
+      : [...current.brands, brand],
+  }));
   const brands = [...new Set(products.filter(p => draft.category === 'all' || p.category === draft.category).map(p => p.brand))].sort();
   const valid = validPriceRange(draft);
   const fieldStyle = [styles.input, { color: theme.text, backgroundColor: theme.background, borderColor: theme.borderStrong }];
@@ -24,7 +30,7 @@ export function CategoryForm({ filters, onApply }: { filters: CatalogFilters; on
     <ThemedText style={LoginTypography.label} themeColor="textMuted">Marque</ThemedText>
     <View style={styles.choices}>
       <Choice label="Toutes les marques" selected={!draft.brands.length} onPress={() => update({ brands: [] })} />
-      {brands.map(brand => <Choice key={brand} label={brand} selected={draft.brands.includes(brand)} onPress={() => update({ brands: draft.brands.includes(brand) ? [] : [brand] })} />)}
+      {brands.map(brand => <Choice key={brand} label={brand} selected={draft.brands.includes(brand)} onPress={() => toggleBrand(brand)} />)}
     </View>
     <ThemedText style={LoginTypography.label} themeColor="textMuted">Prix (€)</ThemedText>
     <View style={styles.row}>

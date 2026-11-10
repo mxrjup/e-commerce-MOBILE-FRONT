@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { products, defaultFilters, filterProducts, getFacets, getProduct, validPriceRange } from '../src/services/catalog.ts';
+import { products, defaultFilters, filterProducts, getProduct, validPriceRange } from '../src/services/catalog.ts';
 const filters = patch => ({ ...defaultFilters, ...patch });
 
 test('catalog has unique stable IDs and every category is represented', () => {
@@ -26,19 +26,10 @@ test('price is inclusive, accepts decimal commas, and rejects invalid ranges', (
     assert.equal(filterProducts(products, filters(patch)).length, 0);
   }
 });
-test('availability excludes sold out products and sorting leaves source untouched', () => {
+test('availability excludes sold out products and preserves catalog order without mutation', () => {
   const ids = products.map(p => p.id);
-  assert.ok(filterProducts(products, filters({ inStock: true })).every(p => p.stock > 0));
-  const ascending = filterProducts(products, defaultFilters, 'price-asc');
-  assert.ok(ascending.every((p, i) => i === 0 || ascending[i - 1].price <= p.price));
-  assert.deepEqual(filterProducts(products, defaultFilters, 'price-desc').map(p => p.price), ascending.map(p => p.price).reverse());
+  const available = filterProducts(products, filters({ inStock: true }));
+  assert.deepEqual(available.map(p => p.id), products.filter(p => p.stock > 0).map(p => p.id));
+  assert.deepEqual(filterProducts(products, defaultFilters).map(p => p.id), ids);
   assert.deepEqual(products.map(p => p.id), ids);
-});
-test('disjunctive facet counts omit only their own selections', () => {
-  const facets = getFacets(products, filters({ category: 'laptops', brands: ['ASUS'], ram: [16] }));
-  assert.equal(facets.brands.find(f => f.value === 'Apple').count, 1);
-  assert.equal(facets.brands.find(f => f.value === 'Lenovo').count, 0);
-  assert.equal(facets.ram.find(f => f.value === 16).count, 1);
-  assert.equal(facets.ram.find(f => f.value === 32).count, 0);
-  assert.equal(facets.storage.find(f => f.value === 512).count, 1);
 });

@@ -34,7 +34,6 @@ export const products: Product[] = [
   { id: 'mx-keys', name: 'MX Keys S', brand: 'Logitech', category: 'accessories', price: 109, stock: 18, ram: 0, storage: 0, image: images.keyboard, description: 'Un clavier sans fil confortable pour votre espace de travail.', specs: { Disposition: 'AZERTY français', Connexion: 'Bluetooth · Récepteur USB', Éclairage: 'Rétroéclairage', Compatibilité: 'Windows · macOS' } },
 ];
 export type CatalogFilters = { query: string; category: CategoryId | 'all'; brands: string[]; minPrice: string; maxPrice: string; inStock: boolean; ram: number[]; storage: number[] };
-export type SortOrder = 'featured' | 'price-asc' | 'price-desc' | 'name';
 export const defaultFilters: CatalogFilters = { query: '', category: 'all', brands: [], minPrice: '', maxPrice: '', inStock: false, ram: [], storage: [] };
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 export const parsePrice = (value: string) => value.trim() === '' ? undefined : Number(value.replace(',', '.'));
@@ -42,28 +41,17 @@ export function validPriceRange(filters: CatalogFilters) {
   const min = parsePrice(filters.minPrice), max = parsePrice(filters.maxPrice);
   return (min === undefined || Number.isFinite(min) && min >= 0) && (max === undefined || Number.isFinite(max) && max >= 0) && (min === undefined || max === undefined || min <= max);
 }
-export function filterProducts(items: Product[], filters: CatalogFilters, sort: SortOrder = 'featured'): Product[] {
+export function filterProducts(items: Product[], filters: CatalogFilters): Product[] {
   if (!validPriceRange(filters)) return [];
   const min = parsePrice(filters.minPrice), max = parsePrice(filters.maxPrice);
   const words = normalize(filters.query).trim().split(/\s+/).filter(Boolean);
-  const result = items.filter(p => {
+  return items.filter(p => {
     const text = normalize([p.name, p.brand, p.description, categories.find(c => c.id === p.category)?.name, ...Object.values(p.specs)].join(' '));
     return words.every(word => text.includes(word)) && (filters.category === 'all' || p.category === filters.category)
       && (!filters.brands.length || filters.brands.includes(p.brand)) && (!filters.inStock || p.stock > 0)
       && (min === undefined || p.price >= min) && (max === undefined || p.price <= max)
       && (!filters.ram.length || filters.ram.includes(p.ram)) && (!filters.storage.length || filters.storage.includes(p.storage));
   });
-  if (sort === 'price-asc') result.sort((a, b) => a.price - b.price);
-  if (sort === 'price-desc') result.sort((a, b) => b.price - a.price);
-  if (sort === 'name') result.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-  return result;
-}
-export function getFacets(items: Product[], filters: CatalogFilters) {
-  const facet = <K extends 'brand' | 'ram' | 'storage'>(key: K, omit: Partial<CatalogFilters>) => {
-    const matching = filterProducts(items, { ...filters, ...omit });
-    return [...new Set(items.map(p => p[key]))].filter(value => value !== 0).sort((a, b) => typeof a === 'number' && typeof b === 'number' ? a - b : String(a).localeCompare(String(b))).map(value => ({ value, count: matching.filter(p => p[key] === value).length }));
-  };
-  return { brands: facet('brand', { brands: [] }), ram: facet('ram', { ram: [] }), storage: facet('storage', { storage: [] }) };
 }
 export const formatPrice = (price: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(price);
 export const getProduct = (id: string) => products.find(p => p.id === id);

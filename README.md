@@ -124,7 +124,7 @@ locale ayant importé les comptes de démonstration, utiliser :
 - **« Cookie not found » :** conserver la même URL publique Keycloak côté
   application et infrastructure, avec `/auth` pour le déploiement INFRA.
   En local, utiliser `http://localhost:8180` si Keycloak est exposé sans ce préfixe.
-  Fermer l'ancienne page de connexion et relanceraa
+  Fermer l'ancienne page de connexion et relancer
   une connexion depuis l'application après avoir rechargé celle-ci.
 - **Identifiants refusés :** utiliser un compte du realm `ecommerce`, par exemple
   les comptes ci-dessus. Un compte créé dans le realm `master` ne convient pas.
