@@ -1,4 +1,4 @@
-﻿import { Image } from 'expo-image';
+import { Image } from 'expo-image';
 import { StyleSheet } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';

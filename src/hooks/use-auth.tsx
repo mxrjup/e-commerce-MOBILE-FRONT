@@ -149,3 +149,4 @@ export function useAuth() {
   if (!auth) throw new Error('useAuth requires AuthProvider');
   return auth;
 }
+

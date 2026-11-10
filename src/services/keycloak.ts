@@ -63,3 +63,4 @@ export async function revokeRefreshToken(config: KeycloakConfig, token: string) 
   });
   if (!response.ok) throw new KeycloakError('revocation_error');
 }
+
