@@ -14,7 +14,7 @@ export function CatalogFilters() {
 
   return <View style={[styles.panel, { borderColor: theme.border }]}>
     <ThemedText accessibilityRole="header" style={LoginTypography.lead}>Filtres des articles</ThemedText>
-    <ThemedText themeColor="textSecondary">Préparez vos critères. Le filtrage des articles sera disponible lorsque le catalogue produits sera accessible. Ces sélections ne filtrent pas les rubriques ci-dessous.</ThemedText>
+    <ThemedText themeColor="textSecondary">Remplissez vos critères</ThemedText>
     {catalogKinds.map(kind => <CatalogFilterGroup key={kind} kind={kind} selected={selected[kind]}
       onChange={values => setSelected(current => ({ ...current, [kind]: values }))} />)}
     <ThemedText accessibilityLiveRegion="polite" themeColor="textSecondary">
