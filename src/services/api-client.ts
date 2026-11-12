@@ -24,6 +24,26 @@ type RequestOptions = {
 
 type Options = Omit<RequestOptions, 'method' | 'body'>;
 
+export function getApiErrorMessage(cause: unknown, timedOut = false): string {
+  if (timedOut || cause instanceof Error && cause.name === 'TimeoutError') {
+    return 'Le serveur met trop de temps à répondre.';
+  }
+  if (cause instanceof ApiError) {
+    if (cause.code === 'network_error') {
+      return 'Impossible de joindre le serveur. Vérifiez votre connexion Internet.';
+    }
+    if (cause.code === 'invalid_response') {
+      return 'Les données reçues du serveur sont invalides.';
+    }
+    if (cause.code === 'http_error') {
+      return cause.status >= 500
+        ? 'Le service est temporairement indisponible.'
+        : 'Le serveur n’a pas pu traiter la demande.';
+    }
+  }
+  return 'Impossible de charger les données pour le moment.';
+}
+
 export function createApiClient(baseUrl: string, getAccessToken: () => Promise<string | null>) {
   const base = new URL(baseUrl);
 

@@ -1,9 +1,33 @@
 import assert from 'node:assert/strict';
 import { afterEach, mock, test } from 'node:test';
 
-import { ApiError, createApiClient } from '../src/services/api-client.ts';
+import { ApiError, createApiClient, getApiErrorMessage } from '../src/services/api-client.ts';
 
 afterEach(() => mock.restoreAll());
+
+test('messages distinguish connection failures, server errors and successful empty results', async () => {
+  const api = createApiClient('http://localhost:8080', async () => null);
+  const fetchMock = mock.method(globalThis, 'fetch', async () => { throw new TypeError('Failed to fetch'); });
+  await assert.rejects(api.get('/api/catalog/brands', { auth: false }), error => {
+    assert.equal(getApiErrorMessage(error), 'Impossible de joindre le serveur. Vérifiez votre connexion Internet.');
+    return true;
+  });
+  fetchMock.mock.mockImplementation(async () => Response.json({}, { status: 503 }));
+  await assert.rejects(api.get('/api/catalog/brands', { auth: false }), error => {
+    assert.equal(getApiErrorMessage(error), 'Le service est temporairement indisponible.');
+    return true;
+  });
+  fetchMock.mock.mockImplementation(async () => Response.json([]));
+  assert.deepEqual(await api.get('/api/catalog/brands', { auth: false }), []);
+});
+
+test('timeouts and invalid responses do not report an empty catalog or a connection failure', () => {
+  assert.equal(getApiErrorMessage(new Error('Aborted'), true), 'Le serveur met trop de temps à répondre.');
+  assert.equal(getApiErrorMessage(new DOMException('Timeout', 'TimeoutError')), 'Le serveur met trop de temps à répondre.');
+  assert.equal(getApiErrorMessage(new ApiError('invalid_response', 'Invalid JSON')), 'Les données reçues du serveur sont invalides.');
+  assert.equal(getApiErrorMessage(new ApiError('http_error', 'Forbidden', 403)), 'Le serveur n’a pas pu traiter la demande.');
+  assert.equal(getApiErrorMessage(new Error('internal details')), 'Impossible de charger les données pour le moment.');
+});
 
 test('uses the current access token on every request and decodes JSON', async () => {
   let token = 'first-token';
