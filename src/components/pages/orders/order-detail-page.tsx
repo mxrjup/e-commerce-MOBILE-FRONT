@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -7,13 +8,41 @@ import { SideMenu } from '@/components/shared/navigation/side-menu';
 import { ThemedText } from '@/components/shared/ui/themed-text';
 import { ThemedView } from '@/components/shared/ui/themed-view';
 import { LoginTypography, Radius, Spacing } from '@/constants/theme';
+import { useApi } from '@/hooks/use-api';
 import { useTheme } from '@/hooks/use-theme';
-import { getOrderHistoryData, getOrderStatusLabel, getTrackingTimeline, normalizeOrderStatus, type OrderHistoryEntry } from '@/services/order-status';
+import { getOrderStatusLabel, getTrackingTimeline, mapOrderDetailResponse, type ApiOrderDetail, type OrderHistoryEntry } from '@/services/order-status';
 
 export function OrderDetailPage() {
   const theme = useTheme();
+  const api = useApi();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
-  const order = getOrderHistoryData().find(item => String(item.id) === String(id));
+  const [order, setOrder] = useState<OrderHistoryEntry | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const numericId = typeof id === 'string' ? id : Array.isArray(id) ? id[0] : '';
+    if (!numericId) {
+      setOrder(null);
+      setLoading(false);
+      return;
+    }
+    let active = true;
+    api.get<ApiOrderDetail>(`/api/orders/${numericId}`)
+      .then((data) => {
+        if (!active) return;
+        setOrder(mapOrderDetailResponse(data));
+      })
+      .catch(() => {
+        if (!active) return;
+        setOrder(null);
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [api, id]);
+
+  if (loading) {
+    return <ThemedView style={styles.root}><SafeAreaView style={styles.root}><View style={styles.centered}><SideMenu /><ThemedText style={LoginTypography.body}>Chargement du suivi…</ThemedText></View></SafeAreaView></ThemedView>;
+  }
 
   if (!order) {
     return <ThemedView style={styles.root}><SafeAreaView style={styles.root}>

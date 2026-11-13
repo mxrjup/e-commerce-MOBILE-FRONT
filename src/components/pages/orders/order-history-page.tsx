@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -6,12 +7,41 @@ import { SideMenu } from '@/components/shared/navigation/side-menu';
 import { ThemedText } from '@/components/shared/ui/themed-text';
 import { ThemedView } from '@/components/shared/ui/themed-view';
 import { LoginTypography, Radius, Spacing } from '@/constants/theme';
+import { useApi } from '@/hooks/use-api';
+import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
-import { getOrderHistoryData, getOrderStatusLabel, type OrderHistoryEntry } from '@/services/order-status';
+import { getOrderHistoryData, getOrderStatusLabel, mapOrderHistoryResponse, type ApiOrderHistoryItem, type OrderHistoryEntry } from '@/services/order-status';
 
 export function OrderHistoryPage() {
   const theme = useTheme();
-  const orders = getOrderHistoryData();
+  const { user } = useAuth();
+  const api = useApi();
+  const [orders, setOrders] = useState<OrderHistoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!user) {
+      setOrders([]);
+      setLoading(false);
+      setError('');
+      return;
+    }
+    let active = true;
+    api.get<ApiOrderHistoryItem[]>('/api/orders/history')
+      .then((data) => {
+        if (!active) return;
+        setOrders(mapOrderHistoryResponse(data));
+        setError('');
+      })
+      .catch((cause) => {
+        if (!active) return;
+        setOrders(getOrderHistoryData());
+        setError(cause instanceof Error ? cause.message : 'Impossible de charger l’historique.');
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [api, user]);
 
   return <ThemedView style={styles.root}><SafeAreaView style={styles.root}>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -21,7 +51,23 @@ export function OrderHistoryPage() {
         <ThemedText themeColor="textSecondary" style={LoginTypography.body}>Suivez vos commandes et ouvrez votre facture.</ThemedText>
       </View>
 
-      {orders.map(order => (
+      {!user ? (
+        <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}> 
+          <ThemedText style={LoginTypography.body}>Connectez-vous pour consulter vos commandes.</ThemedText>
+        </View>
+      ) : loading ? (
+        <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}> 
+          <ThemedText style={LoginTypography.body}>Chargement de l’historique…</ThemedText>
+        </View>
+      ) : error ? (
+        <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}> 
+          <ThemedText style={LoginTypography.body}>{error}</ThemedText>
+        </View>
+      ) : orders.length === 0 ? (
+        <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}> 
+          <ThemedText style={LoginTypography.body}>Aucune commande dans votre historique.</ThemedText>
+        </View>
+      ) : orders.map(order => (
         <Pressable
           key={order.id}
           accessibilityRole="button"

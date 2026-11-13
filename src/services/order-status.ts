@@ -7,6 +7,39 @@ export type OrderTrackingStep = {
   state: 'complete' | 'current' | 'upcoming';
 };
 
+export type ApiOrderHistoryItem = {
+  id: number;
+  orderNumber: string;
+  status: string | null;
+  deliveryMode: string | null;
+  totalInclTax: number | string | null;
+  itemCount: number;
+  createdAt: string | null;
+};
+
+export type ApiOrderDetailItem = {
+  id: number;
+  variantId: number;
+  designation: string;
+  unitPriceExclTax: number | string | null;
+  vatRate: number | string | null;
+  quantity: number;
+  subTotalExclTax: number | string | null;
+  subTotalInclTax: number | string | null;
+};
+
+export type ApiOrderDetail = {
+  id: number;
+  orderNumber: string;
+  status: string | null;
+  deliveryMode: string | null;
+  totalExclTax: number | string | null;
+  totalInclTax: number | string | null;
+  createdAt: string | null;
+  invoiceUrl: string | null;
+  items: ApiOrderDetailItem[];
+};
+
 export type OrderItem = {
   name: string;
   quantity: number;
@@ -17,7 +50,7 @@ export type OrderHistoryEntry = {
   id: number;
   orderNumber: string;
   status: OrderStatusKey;
-  deliveryMode: 'Livraison standard' | 'Livraison express' | 'Retrait magasin';
+  deliveryMode: string;
   totalInclTax: number;
   itemCount: number;
   createdAt: string;
@@ -62,6 +95,48 @@ export function getTrackingTimeline(status?: string | null): OrderTrackingStep[]
     date: index === 0 ? 'Aujourd’hui' : index === 1 ? 'Demain' : index === 2 ? 'En cours de livraison' : 'Livraison terminée',
     state: index < currentIndex ? 'complete' : index === currentIndex ? 'current' : 'upcoming',
   }));
+}
+
+export function mapOrderHistoryResponse(value: ApiOrderHistoryItem[]): OrderHistoryEntry[] {
+  return value.map((order) => {
+    const status = normalizeOrderStatus(order.status) ?? 'NEW';
+    return {
+      id: Number(order.id),
+      orderNumber: order.orderNumber ?? `CMD-${order.id}`,
+      status,
+      deliveryMode: order.deliveryMode ? order.deliveryMode.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, char => char.toUpperCase()) : 'Livraison standard',
+      totalInclTax: Number(order.totalInclTax ?? 0),
+      itemCount: Number(order.itemCount ?? 0),
+      createdAt: order.createdAt ?? new Date().toISOString(),
+      invoiceUrl: `https://example.com/invoices/${order.orderNumber.toLowerCase()}.pdf`,
+      trackingNumber: `Suivi ${order.orderNumber}`,
+      shippingAddress: 'Adresse de livraison mise à jour',
+      items: [
+        { name: order.orderNumber, quantity: Number(order.itemCount ?? 1), price: Number(order.totalInclTax ?? 0) },
+      ],
+    };
+  });
+}
+
+export function mapOrderDetailResponse(value: ApiOrderDetail): OrderHistoryEntry {
+  const status = normalizeOrderStatus(value.status) ?? 'NEW';
+  return {
+    id: Number(value.id),
+    orderNumber: value.orderNumber ?? `CMD-${value.id}`,
+    status,
+    deliveryMode: value.deliveryMode ? value.deliveryMode.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, char => char.toUpperCase()) : 'Livraison standard',
+    totalInclTax: Number(value.totalInclTax ?? 0),
+    itemCount: Array.isArray(value.items) ? value.items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0) : 0,
+    createdAt: value.createdAt ?? new Date().toISOString(),
+    invoiceUrl: value.invoiceUrl ?? `https://example.com/invoices/${value.orderNumber.toLowerCase()}.pdf`,
+    trackingNumber: `Suivi ${value.orderNumber}`,
+    shippingAddress: 'Adresse de livraison mise à jour',
+    items: (value.items ?? []).map((item) => ({
+      name: item.designation ?? `Article ${item.id}`,
+      quantity: Number(item.quantity ?? 0),
+      price: Number(item.subTotalInclTax ?? item.unitPriceExclTax ?? 0),
+    })),
+  };
 }
 
 export function getOrderHistoryData(): OrderHistoryEntry[] {
