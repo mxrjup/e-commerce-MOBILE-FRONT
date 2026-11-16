@@ -1,24 +1,16 @@
-import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { type ApiCart, type CartLine, calculateCartTotals, formatPrice, normalizeCartItem } from '@/components/pages/cart/cart-logic';
 import { Choice } from '@/components/shared/forms/choice';
 import { SideMenu } from '@/components/shared/navigation/side-menu';
 import { ThemedText } from '@/components/shared/ui/themed-text';
 import { ThemedView } from '@/components/shared/ui/themed-view';
 import { ControlSize, LoginTypography, Radius, Spacing } from '@/constants/theme';
 import { useApi } from '@/hooks/use-api';
-import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
-
-type CartLine = {
-  id: number;
-  name: string;
-  quantity: number;
-  unitPrice: number;
-  available: boolean;
-};
 
 type RecommendedItem = {
   id: number;
@@ -27,82 +19,90 @@ type RecommendedItem = {
   description: string;
 };
 
-type ApiCartItem = {
-  id?: number;
-  variantId?: number;
-  quantity?: number;
-  productName?: string | null;
-  unitPriceExclTax?: number | string | null;
-  available?: boolean;
-};
-
-type ApiCart = {
-  items?: ApiCartItem[];
-};
-
-const fallbackItems: CartLine[] = [
-  { id: 1, name: 'Écouteurs sans fil Pro', quantity: 1, unitPrice: 149.0, available: true },
-  { id: 2, name: 'Câble USB-C rapide', quantity: 2, unitPrice: 19.9, available: true },
-];
-
 const recommendedAccessories: RecommendedItem[] = [
   { id: 101, name: 'Station d’accueil', price: 89.0, description: 'Charge rapide et rangement' },
   { id: 102, name: 'Sac de transport', price: 59.0, description: 'Protection et mobilité' },
   { id: 103, name: 'Clavier compact', price: 129.0, description: 'Ergonomie quotidienne' },
 ];
 
-function normalizeCartItem(item: ApiCartItem): CartLine {
-  const quantity = Number(item.quantity ?? 1);
-  const unitPrice = Number(item.unitPriceExclTax ?? 0);
-  return {
-    id: Number(item.id ?? item.variantId ?? 0),
-    name: item.productName ?? 'Article',
-    quantity: Number.isFinite(quantity) ? quantity : 1,
-    unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
-    available: item.available ?? true,
-  };
-}
-
 export function CartPage() {
   const theme = useTheme();
-  const { user } = useAuth();
   const api = useApi();
   const [items, setItems] = useState<CartLine[]>([]);
-  const [loading, setLoading] = useState(Boolean(user));
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (!user) return undefined;
+  const refreshCart = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await api.get<ApiCart>('/api/cart', { auth: false });
+      setItems((data?.items ?? []).map(normalizeCartItem));
+      setError('');
+    } catch (cause) {
+      setItems([]);
+      setError(cause instanceof Error ? cause.message : 'Le panier est indisponible pour le moment.');
+    } finally {
+      setLoading(false);
+    }
+  }, [api]);
 
-    let active = true;
-    api.get<ApiCart>('/api/cart')
-      .then((data) => {
-        if (!active) return;
-        const nextItems = (data?.items ?? []).map(normalizeCartItem);
-        setItems(nextItems.length ? nextItems : fallbackItems);
-        setError('');
-      })
-      .catch(() => {
-        if (!active) return;
-        setItems(fallbackItems);
-        setError('Le serveur est indisponible pour le moment. Affichage de votre panier de démonstration.');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => { active = false; };
-  }, [api, user]);
-
-  const subtotal = useMemo(
-    () => items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0),
-    [items],
+  useFocusEffect(
+    useCallback(() => {
+      void refreshCart();
+    }, [refreshCart]),
   );
 
-  const totalItems = useMemo(
-    () => items.reduce((sum, item) => sum + item.quantity, 0),
-    [items],
-  );
+  const { subtotal, totalItems } = useMemo(() => calculateCartTotals(items), [items]);
+
+  async function addItem(item: RecommendedItem) {
+    setBusy(true);
+    try {
+      const data = await api.post<ApiCart>('/api/cart/items', { variantId: item.id, quantity: 1 }, { auth: false });
+      setItems((data?.items ?? []).map(normalizeCartItem));
+      setError('');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Impossible d’ajouter cet article.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function updateQuantity(itemId: number, nextQuantity: number) {
+    const currentItem = items.find((item) => item.id === itemId);
+    if (!currentItem) return;
+
+    setBusy(true);
+    try {
+      if (nextQuantity <= 0) {
+        const data = await api.delete<ApiCart>(`/api/cart/items/${itemId}`, { auth: false });
+        if (data?.items) setItems(data.items.map(normalizeCartItem));
+        else setItems((current) => current.filter((item) => item.id !== itemId));
+        return;
+      }
+
+      const data = await api.patch<ApiCart>(`/api/cart/items/${itemId}`, { quantity: nextQuantity }, { auth: false });
+      setItems((data?.items ?? []).map(normalizeCartItem));
+      setError('');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Impossible de mettre à jour le panier.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeItem(itemId: number) {
+    setBusy(true);
+    try {
+      const data = await api.delete<ApiCart>(`/api/cart/items/${itemId}`, { auth: false });
+      setItems((data?.items ?? []).map(normalizeCartItem));
+      setError('');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Impossible de supprimer cet article.');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return <ThemedView style={styles.root}><SafeAreaView style={styles.root}>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -114,12 +114,7 @@ export function CartPage() {
         </View>
       </View>
 
-      {!user ? (
-        <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
-          <ThemedText style={LoginTypography.body}>Connectez-vous pour consulter et modifier votre panier.</ThemedText>
-          <Choice label="Se connecter" onPress={() => router.navigate('/login')} />
-        </View>
-      ) : loading ? (
+      {loading ? (
         <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
           <ThemedText style={LoginTypography.body}>Chargement du panier…</ThemedText>
         </View>
@@ -138,16 +133,35 @@ export function CartPage() {
                 <View key={item.id} style={styles.lineRow}>
                   <View style={styles.lineInfo}>
                     <ThemedText style={LoginTypography.body}>{item.name}</ThemedText>
-                    <ThemedText themeColor="textSecondary" style={LoginTypography.body}>Qté : {item.quantity}</ThemedText>
                     {!item.available && <ThemedText style={LoginTypography.body} themeColor="danger">Indisponible</ThemedText>}
                   </View>
-                  <ThemedText style={LoginTypography.body}>{(item.unitPrice * item.quantity).toFixed(2).replace('.', ',')} €</ThemedText>
+
+                  <View style={styles.lineActions}>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`Retirer 1 ${item.name}`} disabled={busy} onPress={() => void updateQuantity(item.id, item.quantity - 1)} style={({ pressed }) => [styles.stepButton, { opacity: pressed || busy ? 0.7 : 1, borderColor: theme.border }]}>
+                      <ThemedText style={LoginTypography.button}>−</ThemedText>
+                    </Pressable>
+
+                    <View style={[styles.quantityBox, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}> 
+                      <ThemedText style={LoginTypography.body}>{item.quantity}</ThemedText>
+                    </View>
+
+                    <Pressable accessibilityRole="button" accessibilityLabel={`Ajouter 1 ${item.name}`} disabled={busy} onPress={() => void updateQuantity(item.id, item.quantity + 1)} style={({ pressed }) => [styles.stepButton, { opacity: pressed || busy ? 0.7 : 1, borderColor: theme.border }]}>
+                      <ThemedText style={LoginTypography.button}>+</ThemedText>
+                    </Pressable>
+                  </View>
+
+                  <View style={styles.priceBlock}>
+                    <ThemedText style={LoginTypography.body}>{formatPrice(item.unitPrice * item.quantity)}</ThemedText>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`Supprimer ${item.name}`} disabled={busy} onPress={() => void removeItem(item.id)} style={({ pressed }) => [styles.removeButton, { opacity: pressed || busy ? 0.7 : 1, borderColor: theme.border }]}>
+                      <ThemedText style={LoginTypography.body} themeColor="danger">Supprimer</ThemedText>
+                    </Pressable>
+                  </View>
                 </View>
               ))}
 
               <View style={styles.summaryRow}>
                 <ThemedText style={LoginTypography.body}>Sous-total</ThemedText>
-                <ThemedText style={LoginTypography.lead}>{subtotal.toFixed(2).replace('.', ',')} €</ThemedText>
+                <ThemedText style={LoginTypography.lead}>{formatPrice(subtotal)}</ThemedText>
               </View>
             </View>
           )}
@@ -162,7 +176,12 @@ export function CartPage() {
                   </View>
                   <ThemedText style={LoginTypography.body}>{item.name}</ThemedText>
                   <ThemedText themeColor="textSecondary" style={LoginTypography.body}>{item.description}</ThemedText>
-                  <ThemedText style={LoginTypography.button}>{item.price.toFixed(2).replace('.', ',')} €</ThemedText>
+                  <View style={styles.recommendationFooter}>
+                    <ThemedText style={LoginTypography.button}>{formatPrice(item.price)}</ThemedText>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`Ajouter ${item.name}`} disabled={busy} onPress={() => void addItem(item)} style={({ pressed }) => [styles.addButton, { backgroundColor: theme.accent, opacity: pressed || busy ? 0.8 : 1 }]}> 
+                      <ThemedText themeColor="onAccent" style={LoginTypography.button}>Ajouter</ThemedText>
+                    </Pressable>
+                  </View>
                 </View>
               ))}
             </ScrollView>
@@ -171,11 +190,11 @@ export function CartPage() {
           <View style={styles.footerActions}>
             <Pressable
               accessibilityRole="button"
-              disabled={items.length === 0}
+              disabled={items.length === 0 || busy}
               onPress={() => router.navigate('/orders')}
-              style={({ pressed }) => [styles.primaryButton, { backgroundColor: items.length === 0 ? theme.border : theme.accent, opacity: pressed ? 0.9 : 1 }]}
+              style={({ pressed }) => [styles.primaryButton, { backgroundColor: items.length === 0 || busy ? theme.border : theme.accent, opacity: pressed ? 0.9 : 1 }]}
             >
-              <ThemedText themeColor={items.length === 0 ? 'text' : 'onAccent'} style={LoginTypography.button}>
+              <ThemedText themeColor={items.length === 0 || busy ? 'text' : 'onAccent'} style={LoginTypography.button}>
                 Valider ma commande
               </ThemedText>
             </Pressable>
@@ -193,12 +212,19 @@ const styles = StyleSheet.create({
   countBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.pill, borderWidth: 1 },
   card: { borderWidth: 1, borderRadius: Radius.card, padding: 16, gap: 16 },
   notice: { borderWidth: 1, borderRadius: Radius.control, padding: 12 },
-  lineRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, paddingVertical: 10, borderBottomWidth: 1 },
+  lineRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, paddingVertical: 10 },
   lineInfo: { flex: 1, gap: 4 },
+  lineActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  stepButton: { minWidth: 36, minHeight: 36, borderWidth: 1, borderRadius: Radius.control, justifyContent: 'center', alignItems: 'center' },
+  quantityBox: { minWidth: 32, minHeight: 32, borderWidth: 1, borderRadius: Radius.control, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 8 },
+  priceBlock: { alignItems: 'flex-end', gap: 6 },
+  removeButton: { borderWidth: 1, borderRadius: Radius.control, paddingHorizontal: 8, paddingVertical: 4 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTopWidth: 1 },
   recommendationList: { gap: 12, paddingVertical: 8 },
   recommendationCard: { width: 180, borderWidth: 1, borderRadius: Radius.card, padding: 12, gap: 8, marginRight: 12 },
   thumb: { height: 90, borderRadius: Radius.control, alignItems: 'center', justifyContent: 'center' },
+  recommendationFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  addButton: { borderRadius: Radius.control, minHeight: 36, paddingHorizontal: 10, justifyContent: 'center', alignItems: 'center' },
   footerActions: { paddingTop: 8 },
   primaryButton: { minHeight: ControlSize.primary, borderRadius: Radius.control, justifyContent: 'center', alignItems: 'center', paddingVertical: Spacing.small },
 });
