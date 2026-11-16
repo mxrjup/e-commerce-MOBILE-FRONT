@@ -17,16 +17,12 @@ export function OrderHistoryPage() {
   const { user } = useAuth();
   const api = useApi();
   const [orders, setOrders] = useState<OrderHistoryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(user));
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!user) {
-      setOrders([]);
-      setLoading(false);
-      setError('');
-      return;
-    }
+    if (!user) return;
+
     let active = true;
     api.get<ApiOrderHistoryItem[]>('/api/orders/history')
       .then((data) => {
