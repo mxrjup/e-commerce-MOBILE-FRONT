@@ -1,4 +1,6 @@
+import { router } from 'expo-router';
 import { ScrollView, StyleSheet } from 'react-native';
+import { Choice } from '@/components/shared/forms/choice';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CatalogFilters } from '@/components/pages/catalog/catalog-filters';
 import { CatalogNavigation } from '@/components/shared/catalog/catalog-navigation';
@@ -10,8 +12,9 @@ export function CatalogPage() {
   return <ThemedView style={styles.root}><SafeAreaView style={styles.root}>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
       <SideMenu />
+      <Choice label="Rechercher des produits" onPress={() => router.navigate('/search')} />
       <CatalogNavigation><CatalogFilters /></CatalogNavigation>
-      <ThemedText themeColor="textSecondary">La consultation des articles n’est pas encore disponible.</ThemedText>
+      <ThemedText themeColor="textSecondary">Retrouvez les articles depuis la recherche de produits.</ThemedText>
     </ScrollView>
   </SafeAreaView></ThemedView>;
 }
