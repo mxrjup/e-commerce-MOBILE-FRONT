@@ -17,15 +17,13 @@ export function OrderDetailPage() {
   const api = useApi();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const [order, setOrder] = useState<OrderHistoryEntry | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(typeof id === 'string' ? id : Array.isArray(id) ? id[0] : ''));
+
+  const numericId = typeof id === 'string' ? id : Array.isArray(id) ? id[0] : '';
 
   useEffect(() => {
-    const numericId = typeof id === 'string' ? id : Array.isArray(id) ? id[0] : '';
-    if (!numericId) {
-      setOrder(null);
-      setLoading(false);
-      return;
-    }
+    if (!numericId) return;
+
     let active = true;
     api.get<ApiOrderDetail>(`/api/orders/${numericId}`)
       .then((data) => {
@@ -38,7 +36,7 @@ export function OrderDetailPage() {
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [api, id]);
+  }, [api, numericId]);
 
   if (loading) {
     return <ThemedView style={styles.root}><SafeAreaView style={styles.root}><View style={styles.centered}><SideMenu /><ThemedText style={LoginTypography.body}>Chargement du suivi…</ThemedText></View></SafeAreaView></ThemedView>;
