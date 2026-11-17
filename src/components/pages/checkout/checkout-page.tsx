@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Choice } from '@/components/shared/forms/choice';
@@ -24,6 +24,7 @@ type CheckoutAddress = {
 
 type CartLine = {
   id: number;
+  variantId: number;
   name: string;
   quantity: number;
   unitPrice: number;
@@ -61,7 +62,8 @@ function normalizeCartItem(item: ApiCartItem): CartLine {
   const unitPrice = Number(item.unitPriceExclTax ?? 0);
 
   return {
-    id: Number(item.id ?? item.variantId ?? 0),
+    id: Number(item.id ?? 0),
+    variantId: Number(item.variantId ?? item.id ?? 0),
     name: item.productName ?? 'Article',
     quantity: Number.isFinite(quantity) ? quantity : 1,
     unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
@@ -126,11 +128,16 @@ export function CheckoutPage() {
     setError('');
 
     try {
-      await api.post('/api/orders/checkout', {
+      const response = await api.post<{ stripeCheckoutUrl?: string; orderId?: number; orderNumber?: string }>('/api/orders/checkout', {
         shippingAddressId: selectedAddressId,
         deliveryMode: selectedDelivery,
-        items: items.map((item) => ({ variantId: item.id, quantity: item.quantity })),
+        items: items.map((item) => ({ variantId: item.variantId || item.id, quantity: item.quantity })),
       });
+
+      if (response?.stripeCheckoutUrl) {
+        await Linking.openURL(response.stripeCheckoutUrl);
+      }
+
       router.navigate('/orders');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Impossible de confirmer votre commande.');
