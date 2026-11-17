@@ -137,8 +137,6 @@ export function CheckoutPage() {
       if (response?.stripeCheckoutUrl) {
         await Linking.openURL(response.stripeCheckoutUrl);
       }
-
-      router.navigate('/orders');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Impossible de confirmer votre commande.');
     } finally {
