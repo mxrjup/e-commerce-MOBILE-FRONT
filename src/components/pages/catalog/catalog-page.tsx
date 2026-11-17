@@ -1,17 +1,21 @@
 import { ScrollView, StyleSheet } from 'react-native';
+import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CatalogFilters } from '@/components/pages/catalog/catalog-filters';
 import { CatalogNavigation } from '@/components/shared/catalog/catalog-navigation';
 import { SideMenu } from '@/components/shared/navigation/side-menu';
-import { ThemedText } from '@/components/shared/ui/themed-text';
+import { CatalogProducts } from '@/components/shared/catalog/catalog-products';
+import type { ProductFilters } from '@/services/product-list';
 import { ThemedView } from '@/components/shared/ui/themed-view';
 
 export function CatalogPage() {
+  const [filters, setFilters] = useState<ProductFilters>({});
   return <ThemedView style={styles.root}><SafeAreaView style={styles.root}>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
       <SideMenu />
-      <CatalogNavigation><CatalogFilters /></CatalogNavigation>
-      <ThemedText themeColor="textSecondary">La consultation des articles n’est pas encore disponible.</ThemedText>
+      <CatalogFilters selected={filters} onChange={setFilters} />
+      <CatalogProducts filters={filters} />
+      <CatalogNavigation />
     </ScrollView>
   </SafeAreaView></ThemedView>;
 }

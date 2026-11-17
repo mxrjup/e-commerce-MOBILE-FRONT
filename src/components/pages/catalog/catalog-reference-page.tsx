@@ -9,6 +9,8 @@ import { LoginTypography } from '@/constants/theme';
 import { useCatalog } from '@/hooks/use-catalog';
 import { useTheme } from '@/hooks/use-theme';
 import { catalogLabels, flattenCategories, isCatalogKind } from '@/services/catalog-api';
+import { CatalogProducts } from '@/components/shared/catalog/catalog-products';
+import { catalogFilterKeys } from '@/services/product-list';
 
 export function CatalogReferencePage({ kind, slug }: { kind: string; slug: string }) {
   const valid = isCatalogKind(kind) && !!slug && slug !== '.' && slug !== '..';
@@ -32,7 +34,7 @@ export function CatalogReferencePage({ kind, slug }: { kind: string; slug: strin
                 : tree.error ? <ThemedText accessibilityRole="alert" themeColor="danger">Sous-catégories : {tree.error}</ThemedText>
                   : children.length > 0 && <><ThemedText accessibilityRole="header" style={LoginTypography.lead}>Sous-catégories</ThemedText><CatalogReferenceLinks kind="categories" items={children} /></>}
             </View>}
-            <ThemedText themeColor="textSecondary">La consultation des articles de cette rubrique n’est pas encore disponible.</ThemedText>
+            <CatalogProducts key={`${resource}:${slug}`} filters={{ [catalogFilterKeys[resource]]: slug }} />
           </>}
     <Choice label="Retour à l’accueil" onPress={() => router.navigate('/home')} />
   </ScrollView></SafeAreaView></ThemedView>;

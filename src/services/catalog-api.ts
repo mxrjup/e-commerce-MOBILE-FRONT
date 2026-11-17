@@ -1,4 +1,6 @@
 import type { createApiClient } from './api-client';
+import { parseProductDetail } from './product-detail.ts';
+import { parseProductList, productListPath, type ProductFilters } from './product-list.ts';
 
 export const catalogKinds = ['categories', 'brands', 'universes'] as const;
 export type CatalogKind = typeof catalogKinds[number];
@@ -51,8 +53,7 @@ export function searchReferences(items: CatalogReference[], query: string) {
   return flattenCategories(items).filter(({ item, path }) => words.every(word => normalize(`${path} ${item.description ?? ''}`).includes(word)));
 }
 
-// Only the public reference endpoints implemented by catalog-service C05.
-// Products, variants and relations to these references are not available yet.
+// Public endpoints implemented by catalog-service.
 export function createCatalogApi(client: Pick<ReturnType<typeof createApiClient>, 'get'>) {
   async function list(kind: CatalogKind, signal?: AbortSignal): Promise<CatalogReference[]> {
     const data = await client.get<unknown>(`/api/catalog/${kind}`, { auth: false, signal });
@@ -64,5 +65,12 @@ export function createCatalogApi(client: Pick<ReturnType<typeof createApiClient>
     const data = await client.get<unknown>(`/api/catalog/${kind}/${encodeURIComponent(slug)}`, { auth: false, signal });
     return reference(data, kind, false);
   }
-  return { list, detail };
+  async function product(slug: string, signal?: AbortSignal) {
+    if (!slug.trim() || slug === '.' || slug === '..') throw new Error('Produit invalide.');
+    return parseProductDetail(await client.get<unknown>(`/api/catalog/products/${encodeURIComponent(slug)}`, { auth: false, signal }));
+  }
+  async function products(filters: ProductFilters = {}, page = 0, signal?: AbortSignal) {
+    return parseProductList(await client.get<unknown>(productListPath(filters, page), { auth: false, signal }));
+  }
+  return { list, detail, product, products };
 }
