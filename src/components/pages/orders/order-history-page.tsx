@@ -16,30 +16,24 @@ export function OrderHistoryPage() {
   const theme = useTheme();
   const { user } = useAuth();
   const api = useApi();
-  const [orders, setOrders] = useState<OrderHistoryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [result, setResult] = useState<{ user: typeof user; api: typeof api; orders: OrderHistoryEntry[]; error: string }>();
+  const current = user && result?.user === user && result.api === api ? result : undefined;
+  const orders = current?.orders ?? [];
+  const loading = !!user && !current;
+  const error = current?.error ?? '';
 
   useEffect(() => {
-    if (!user) {
-      setOrders([]);
-      setLoading(false);
-      setError('');
-      return;
-    }
+    if (!user) return;
     let active = true;
     api.get<ApiOrderHistoryItem[]>('/api/orders/history')
       .then((data) => {
         if (!active) return;
-        setOrders(mapOrderHistoryResponse(data));
-        setError('');
+        setResult({ user, api, orders: mapOrderHistoryResponse(data), error: '' });
       })
       .catch((cause) => {
         if (!active) return;
-        setOrders(getOrderHistoryData());
-        setError(cause instanceof Error ? cause.message : 'Impossible de charger l’historique.');
-      })
-      .finally(() => { if (active) setLoading(false); });
+        setResult({ user, api, orders: getOrderHistoryData(), error: cause instanceof Error ? cause.message : 'Impossible de charger l’historique.' });
+      });
     return () => { active = false; };
   }, [api, user]);
 
