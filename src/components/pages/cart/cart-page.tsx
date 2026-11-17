@@ -191,7 +191,7 @@ export function CartPage() {
             <Pressable
               accessibilityRole="button"
               disabled={items.length === 0 || busy}
-              onPress={() => router.navigate('/orders')}
+              onPress={() => router.navigate('/checkout')}
               style={({ pressed }) => [styles.primaryButton, { backgroundColor: items.length === 0 || busy ? theme.border : theme.accent, opacity: pressed ? 0.9 : 1 }]}
             >
               <ThemedText themeColor={items.length === 0 || busy ? 'text' : 'onAccent'} style={LoginTypography.button}>
