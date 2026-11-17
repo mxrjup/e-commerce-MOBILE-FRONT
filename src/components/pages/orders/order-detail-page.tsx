@@ -16,25 +16,24 @@ export function OrderDetailPage() {
   const theme = useTheme();
   const api = useApi();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
-  const [order, setOrder] = useState<OrderHistoryEntry | null>(null);
-  const [loading, setLoading] = useState(Boolean(typeof id === 'string' ? id : Array.isArray(id) ? id[0] : ''));
-
   const numericId = typeof id === 'string' ? id : Array.isArray(id) ? id[0] : '';
+  const [result, setResult] = useState<{ id: string; api: typeof api; order: OrderHistoryEntry | null }>();
+  const current = result?.id === numericId && result.api === api ? result : undefined;
+  const order = numericId ? current?.order : null;
+  const loading = !!numericId && !current;
 
   useEffect(() => {
     if (!numericId) return;
-
     let active = true;
     api.get<ApiOrderDetail>(`/api/orders/${numericId}`)
       .then((data) => {
         if (!active) return;
-        setOrder(mapOrderDetailResponse(data));
+        setResult({ id: numericId, api, order: mapOrderDetailResponse(data) });
       })
       .catch(() => {
         if (!active) return;
-        setOrder(null);
-      })
-      .finally(() => { if (active) setLoading(false); });
+        setResult({ id: numericId, api, order: null });
+      });
     return () => { active = false; };
   }, [api, numericId]);
 

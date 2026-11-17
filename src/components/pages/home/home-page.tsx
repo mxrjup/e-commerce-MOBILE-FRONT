@@ -20,6 +20,7 @@ export function HomePage() {
         <ThemedText accessibilityRole="header" style={styles.heroTitle} themeColor="onHero">Votre prochain coup de cœur technologique.</ThemedText>
         <ThemedText style={LoginTypography.lead} themeColor="onHeroSecondary">PC, smartphones et accessoires. Trouvez l’équipement qui vous ressemble.</ThemedText>
         <Choice label="Explorer le catalogue →" onPress={() => router.navigate('/catalog')} />
+        <Choice label="Rechercher des produits" onPress={() => router.navigate('/search')} />
       </View>
       <CatalogNavigation showSearch={false} />
       <ThemedText style={styles.footer} themeColor="textMuted">LOG · Informatique & téléphonie</ThemedText>
