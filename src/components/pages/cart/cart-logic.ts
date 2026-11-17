@@ -1,5 +1,6 @@
 export type CartLine = {
   id: number;
+  variantId: number;
   name: string;
   quantity: number;
   unitPrice: number;
@@ -24,7 +25,8 @@ export function normalizeCartItem(item: ApiCartItem): CartLine {
   const unitPrice = Number(item.unitPriceExclTax ?? 0);
 
   return {
-    id: Number(item.id ?? item.variantId ?? 0),
+    id: Number(item.id ?? 0),
+    variantId: Number(item.variantId ?? item.id ?? 0),
     name: item.productName ?? 'Article',
     quantity: Number.isFinite(quantity) ? quantity : 1,
     unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
