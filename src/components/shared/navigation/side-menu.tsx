@@ -76,7 +76,7 @@ export function SideMenu() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{ selected: pathname === '/cart' }}
-                onPress={() => { close(); router.navigate('/cart'); }}
+                onPress={() => { close(); router.navigate('/cart' as never); }}
                 style={({ pressed }) => [styles.menuItem, { borderColor: theme.border, borderWidth: 1, backgroundColor: pathname === '/cart' ? theme.backgroundSelected : theme.background }, pressed && styles.dimmed]}>
                 <ThemedText style={LoginTypography.button}>Panier</ThemedText>
               </Pressable>
