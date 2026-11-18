@@ -1,3 +1,5 @@
+import { readCartSessionToken, writeCartSessionToken } from '@/services/session-storage';
+
 type ApiErrorCode = 'http_error' | 'network_error' | 'auth_required' | 'auth_refresh_failed' | 'invalid_response';
 
 export class ApiError extends Error {
@@ -46,6 +48,23 @@ export function getApiErrorMessage(cause: unknown, timedOut = false): string {
 
 export function createApiClient(baseUrl: string, getAccessToken: () => Promise<string | null>) {
   const base = new URL(baseUrl);
+  let cartSessionTokenPromise: Promise<string | null> | null = null;
+
+  function isCartPath(path: string): boolean {
+    return path === '/api/cart' || path.startsWith('/api/cart/');
+  }
+
+  async function readCachedCartSessionToken(): Promise<string | null> {
+    if (!cartSessionTokenPromise) {
+      cartSessionTokenPromise = readCartSessionToken();
+    }
+    return cartSessionTokenPromise;
+  }
+
+  async function cacheCartSessionToken(token: string | null) {
+    cartSessionTokenPromise = Promise.resolve(token);
+    await writeCartSessionToken(token);
+  }
 
   async function request<T = unknown>(path: string, options: RequestOptions = {}): Promise<T> {
     const url = new URL(path, base);
@@ -55,6 +74,14 @@ export function createApiClient(baseUrl: string, getAccessToken: () => Promise<s
 
     const headers = new Headers(options.headers);
     headers.set('Accept', 'application/json');
+
+    if (isCartPath(path)) {
+      const sessionToken = await readCachedCartSessionToken();
+      if (sessionToken) {
+        headers.set('X-Session-Token', sessionToken);
+      }
+    }
+
     // Authentication is owned by this client, never by individual callers.
     headers.delete('Authorization');
     if (options.auth !== false) {
@@ -83,6 +110,13 @@ export function createApiClient(baseUrl: string, getAccessToken: () => Promise<s
         redirect: 'error',
       });
       text = await response.text();
+
+      if (isCartPath(path)) {
+        const sessionToken = response.headers.get('X-Session-Token');
+        if (sessionToken) {
+          await cacheCartSessionToken(sessionToken);
+        }
+      }
     } catch (cause) {
       if (cause instanceof Error && (cause.name === 'AbortError' || cause.name === 'TimeoutError')) throw cause;
       throw new ApiError('network_error', 'Impossible de joindre le serveur. Vérifiez votre connexion.');
