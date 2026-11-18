@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { type ApiCart, type CartLine, formatPrice, getLineTotalInclTax, normalizeCartItem } from '@/components/pages/cart/cart-logic';
 import { Choice } from '@/components/shared/forms/choice';
 import { SideMenu } from '@/components/shared/navigation/side-menu';
 import { ThemedText } from '@/components/shared/ui/themed-text';
@@ -16,63 +17,63 @@ type DeliveryMode = 'STANDARD' | 'EXPRESS' | 'CLICK_AND_COLLECT' | 'RELAY_POINT'
 
 type CheckoutAddress = {
   id: number;
-  title: string;
-  line1: string;
+  label: string;
+  recipient: string;
+  street: string;
+  complement?: string;
+  zipCode: string;
   city: string;
   country: string;
+  isDefault: boolean;
 };
 
-type CartLine = {
+type ApiAddress = {
   id: number;
-  variantId: number;
-  name: string;
-  quantity: number;
-  unitPrice: number;
-  available: boolean;
+  label?: string | null;
+  recipient?: string | null;
+  street?: string | null;
+  complement?: string | null;
+  zipCode?: string | null;
+  city?: string | null;
+  country?: string | null;
+  default?: boolean;
+  isDefault?: boolean;
 };
 
-type ApiCartItem = {
-  id?: number;
-  variantId?: number;
-  quantity?: number;
-  productName?: string | null;
-  unitPriceExclTax?: number | string | null;
-  available?: boolean;
-};
-
-type ApiCart = {
-  items?: ApiCartItem[];
-};
-
-const checkoutAddresses: CheckoutAddress[] = [
-  { id: 1, title: 'Maison', line1: '12 rue des Lilas', city: 'Lyon', country: 'France' },
-  { id: 2, title: 'Bureau', line1: '8 avenue de la République', city: 'Paris', country: 'France' },
-  { id: 3, title: 'Domicile parent', line1: '9 boulevard Saint-Michel', city: 'Nantes', country: 'France' },
+const deliveryOptions: { value: DeliveryMode; label: string; description: string }[] = [
+  { value: 'STANDARD', label: 'Livraison standard', description: '2 à 4 jours ouvrés' },
+  { value: 'EXPRESS', label: 'Livraison express', description: '24h' },
+  { value: 'CLICK_AND_COLLECT', label: 'Retrait magasin', description: 'Disponible le lendemain' },
+  { value: 'RELAY_POINT', label: 'Relais', description: 'Point de retrait' },
 ];
 
-const deliveryOptions: { value: DeliveryMode; label: string; description: string; price: number }[] = [
-  { value: 'STANDARD', label: 'Livraison standard', description: '2 à 4 jours ouvrés', price: 4.9 },
-  { value: 'EXPRESS', label: 'Livraison express', description: '24h', price: 12.9 },
-  { value: 'CLICK_AND_COLLECT', label: 'Retrait magasin', description: 'Disponible le lendemain', price: 0 },
-  { value: 'RELAY_POINT', label: 'Relais', description: 'Point de retrait', price: 3.9 },
-];
-
-function normalizeCartItem(item: ApiCartItem): CartLine {
-  const quantity = Number(item.quantity ?? 1);
-  const unitPrice = Number(item.unitPriceExclTax ?? 0);
-
+function normalizeAddress(address: ApiAddress): CheckoutAddress {
   return {
-    id: Number(item.id ?? 0),
-    variantId: Number(item.variantId ?? item.id ?? 0),
-    name: item.productName ?? 'Article',
-    quantity: Number.isFinite(quantity) ? quantity : 1,
-    unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
-    available: item.available ?? true,
+    id: Number(address.id),
+    label: address.label?.trim() || 'Adresse',
+    recipient: address.recipient?.trim() || 'Destinataire',
+    street: address.street?.trim() || '',
+    complement: address.complement?.trim() || undefined,
+    zipCode: address.zipCode?.trim() || '',
+    city: address.city?.trim() || '',
+    country: address.country?.trim() || 'France',
+    isDefault: Boolean(address.isDefault ?? address.default),
   };
 }
 
-function formatPrice(value: number) {
-  return `${value.toFixed(2).replace('.', ',')} €`;
+function calculateShippingCost(mode: DeliveryMode, subtotalInclTax: number): number {
+  switch (mode) {
+    case 'CLICK_AND_COLLECT':
+      return 0;
+    case 'RELAY_POINT':
+      return 3.5;
+    case 'STANDARD':
+      return subtotalInclTax >= 50 ? 0 : 4.9;
+    case 'EXPRESS':
+      return 9.9;
+    default:
+      return 0;
+  }
 }
 
 export function CheckoutPage() {
@@ -80,7 +81,8 @@ export function CheckoutPage() {
   const api = useApi();
   const { user } = useAuth();
   const [items, setItems] = useState<CartLine[]>([]);
-  const [selectedAddressId, setSelectedAddressId] = useState<number>(checkoutAddresses[0].id);
+  const [addresses, setAddresses] = useState<CheckoutAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
   const [selectedDelivery, setSelectedDelivery] = useState<DeliveryMode>('STANDARD');
   const [loading, setLoading] = useState(Boolean(user));
   const [submitting, setSubmitting] = useState(false);
@@ -90,16 +92,32 @@ export function CheckoutPage() {
     if (!user) return;
 
     let active = true;
-    api.get<ApiCart>('/api/cart')
-      .then((data) => {
+    Promise.all([
+      api.get<ApiCart>('/api/cart'),
+      api.get<ApiAddress[]>('/api/v1/addresses'),
+    ])
+      .then(([cartData, addressData]) => {
         if (!active) return;
-        setItems((data?.items ?? []).map(normalizeCartItem));
+
+        setItems((cartData?.items ?? []).map(normalizeCartItem));
+        const nextAddresses = (addressData ?? []).map(normalizeAddress);
+        setAddresses(nextAddresses);
+
+        if (nextAddresses.length > 0) {
+          const defaultAddress = nextAddresses.find((address) => address.isDefault) ?? nextAddresses[0];
+          setSelectedAddressId(defaultAddress.id);
+        } else {
+          setSelectedAddressId(null);
+        }
+
         setError('');
       })
       .catch((cause) => {
         if (!active) return;
-        setError(cause instanceof Error ? cause.message : 'Panier indisponible pour le moment.');
+        setError(cause instanceof Error ? cause.message : 'Impossible de charger le checkout.');
         setItems([]);
+        setAddresses([]);
+        setSelectedAddressId(null);
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -108,17 +126,24 @@ export function CheckoutPage() {
     return () => { active = false; };
   }, [api, user]);
 
-  const delivery = deliveryOptions.find((option) => option.value === selectedDelivery) ?? deliveryOptions[0];
-
   const subtotal = useMemo(
-    () => items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0),
+    () => items.reduce((sum, item) => sum + getLineTotalInclTax(item), 0),
     [items],
   );
 
-  const total = subtotal + delivery.price;
+  const shippingCost = useMemo(
+    () => calculateShippingCost(selectedDelivery, subtotal),
+    [selectedDelivery, subtotal],
+  );
+
+  const total = subtotal + shippingCost;
 
   async function confirmOrder() {
     if (!user) return;
+    if (!selectedAddressId) {
+      setError('Ajoutez une adresse de livraison avant de confirmer votre commande.');
+      return;
+    }
     if (items.length === 0) {
       setError('Votre panier est vide. Ajoutez un article avant de valider.');
       return;
@@ -135,6 +160,10 @@ export function CheckoutPage() {
       });
 
       if (response?.stripeCheckoutUrl) {
+        const canOpen = await Linking.canOpenURL(response.stripeCheckoutUrl);
+        if (!canOpen) {
+          throw new Error('Impossible d’ouvrir la page de paiement Stripe.');
+        }
         await Linking.openURL(response.stripeCheckoutUrl);
       }
     } catch (cause) {
@@ -168,16 +197,23 @@ export function CheckoutPage() {
 
           <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}> 
             <ThemedText accessibilityRole="header" style={LoginTypography.label} themeColor="textMuted">Adresse de livraison</ThemedText>
-            {checkoutAddresses.map((address) => (
+            {addresses.length === 0 ? (
+              <View style={[styles.optionRow, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+                <ThemedText style={LoginTypography.body}>Aucune adresse disponible.</ThemedText>
+                <ThemedText themeColor="textSecondary" style={LoginTypography.body}>Ajoutez une adresse dans votre espace compte avant de commander.</ThemedText>
+              </View>
+            ) : addresses.map((address) => (
               <Pressable
                 key={address.id}
                 accessibilityRole="button"
                 onPress={() => setSelectedAddressId(address.id)}
                 style={({ pressed }) => [styles.optionRow, { borderColor: selectedAddressId === address.id ? theme.accent : theme.border, backgroundColor: selectedAddressId === address.id ? theme.backgroundSelected : theme.background, opacity: pressed ? 0.8 : 1 }]}
               >
-                <ThemedText style={LoginTypography.body}>{address.title}</ThemedText>
-                <ThemedText themeColor="textSecondary" style={LoginTypography.body}>{address.line1}</ThemedText>
-                <ThemedText themeColor="textSecondary" style={LoginTypography.body}>{address.city}, {address.country}</ThemedText>
+                <ThemedText style={LoginTypography.body}>{address.label}</ThemedText>
+                <ThemedText themeColor="textSecondary" style={LoginTypography.body}>{address.recipient}</ThemedText>
+                <ThemedText themeColor="textSecondary" style={LoginTypography.body}>{address.street}</ThemedText>
+                {!!address.complement && <ThemedText themeColor="textSecondary" style={LoginTypography.body}>{address.complement}</ThemedText>}
+                <ThemedText themeColor="textSecondary" style={LoginTypography.body}>{address.zipCode} {address.city}, {address.country}</ThemedText>
               </Pressable>
             ))}
           </View>
@@ -195,7 +231,7 @@ export function CheckoutPage() {
                   <ThemedText style={LoginTypography.body}>{option.label}</ThemedText>
                   <ThemedText themeColor="textSecondary" style={LoginTypography.body}>{option.description}</ThemedText>
                 </View>
-                <ThemedText style={LoginTypography.body}>{formatPrice(option.price)}</ThemedText>
+                <ThemedText style={LoginTypography.body}>{formatPrice(calculateShippingCost(option.value, subtotal))}</ThemedText>
               </Pressable>
             ))}
           </View>
@@ -212,18 +248,18 @@ export function CheckoutPage() {
                       <ThemedText style={LoginTypography.body}>{item.name}</ThemedText>
                       <ThemedText themeColor="textSecondary" style={LoginTypography.body}>Qté : {item.quantity}</ThemedText>
                     </View>
-                    <ThemedText style={LoginTypography.body}>{formatPrice(item.unitPrice * item.quantity)}</ThemedText>
+                    <ThemedText style={LoginTypography.body}>{formatPrice(getLineTotalInclTax(item))}</ThemedText>
                   </View>
                 ))}
 
                 <View style={styles.totalBlock}>
                   <View style={styles.totalRow}>
-                    <ThemedText style={LoginTypography.body}>Sous-total</ThemedText>
+                    <ThemedText style={LoginTypography.body}>Sous-total TTC</ThemedText>
                     <ThemedText style={LoginTypography.body}>{formatPrice(subtotal)}</ThemedText>
                   </View>
                   <View style={styles.totalRow}>
                     <ThemedText style={LoginTypography.body}>Livraison</ThemedText>
-                    <ThemedText style={LoginTypography.body}>{formatPrice(delivery.price)}</ThemedText>
+                    <ThemedText style={LoginTypography.body}>{formatPrice(shippingCost)}</ThemedText>
                   </View>
                   <View style={[styles.totalRow, styles.totalRowStrong]}>
                     <ThemedText style={LoginTypography.lead}>Total</ThemedText>
@@ -237,11 +273,11 @@ export function CheckoutPage() {
           <View style={styles.footerActions}>
             <Pressable
               accessibilityRole="button"
-              disabled={submitting || items.length === 0}
+              disabled={submitting || items.length === 0 || selectedAddressId === null}
               onPress={() => void confirmOrder()}
-              style={({ pressed }) => [styles.primaryButton, { backgroundColor: submitting || items.length === 0 ? theme.border : theme.accent, opacity: pressed ? 0.9 : 1 }]}
+              style={({ pressed }) => [styles.primaryButton, { backgroundColor: submitting || items.length === 0 || selectedAddressId === null ? theme.border : theme.accent, opacity: pressed ? 0.9 : 1 }]}
             >
-              <ThemedText themeColor={submitting || items.length === 0 ? 'text' : 'onAccent'} style={LoginTypography.button}>
+              <ThemedText themeColor={submitting || items.length === 0 || selectedAddressId === null ? 'text' : 'onAccent'} style={LoginTypography.button}>
                 {submitting ? 'Validation…' : 'Confirmer la commande'}
               </ThemedText>
             </Pressable>
