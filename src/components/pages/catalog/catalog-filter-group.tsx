@@ -7,7 +7,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { catalogLabels, flattenCategories, type CatalogKind } from '@/services/catalog-api';
 
 export function CatalogFilterGroup({ kind, selected, onChange }: {
-  kind: CatalogKind; selected: number[]; onChange: (selected: number[]) => void;
+  kind: CatalogKind; selected?: string; onChange: (selected: string | undefined) => void;
 }) {
   const { data, loading, error } = useCatalog(kind);
   const theme = useTheme();
@@ -21,10 +21,10 @@ export function CatalogFilterGroup({ kind, selected, onChange }: {
     </View> : error ? <ThemedText accessibilityRole="alert" themeColor="danger">{error}</ThemedText>
       : options.length === 0 ? <ThemedText themeColor="textSecondary">Aucune option disponible pour ce filtre.</ThemedText>
         : <View style={styles.options}>
-          <Choice label={`Tout inclure — ${catalogLabels[kind]}`} selected={selected.length === 0} onPress={() => onChange([])} />
+          <Choice label={`Tout inclure — ${catalogLabels[kind]}`} selected={!selected} onPress={() => onChange(undefined)} />
           {options.map(({ item, path }) => <Choice key={item.id} label={path}
-            accessibilityLabel={`${catalogLabels[kind]} : ${path}`} selected={selected.includes(item.id)}
-            onPress={() => onChange(selected.includes(item.id) ? selected.filter(id => id !== item.id) : [...selected, item.id])} />)}
+            accessibilityLabel={`${catalogLabels[kind]} : ${path}`} selected={selected === item.slug}
+            onPress={() => onChange(selected === item.slug ? undefined : item.slug)} />)}
         </View>}
   </View>;
 }
