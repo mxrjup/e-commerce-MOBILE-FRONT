@@ -1,8 +1,10 @@
 export type CartLine = {
   id: number;
+  variantId: number;
   name: string;
   quantity: number;
-  unitPrice: number;
+  unitPriceExclTax: number;
+  vatRate: number;
   available: boolean;
 };
 
@@ -12,6 +14,7 @@ export type ApiCartItem = {
   quantity?: number;
   productName?: string | null;
   unitPriceExclTax?: number | string | null;
+  vatRate?: number | string | null;
   available?: boolean;
 };
 
@@ -21,19 +24,30 @@ export type ApiCart = {
 
 export function normalizeCartItem(item: ApiCartItem): CartLine {
   const quantity = Number(item.quantity ?? 1);
-  const unitPrice = Number(item.unitPriceExclTax ?? 0);
+  const unitPriceExclTax = Number(item.unitPriceExclTax ?? 0);
+  const vatRate = Number(item.vatRate ?? 0);
 
   return {
-    id: Number(item.id ?? item.variantId ?? 0),
+    id: Number(item.id ?? 0),
+    variantId: Number(item.variantId ?? item.id ?? 0),
     name: item.productName ?? 'Article',
     quantity: Number.isFinite(quantity) ? quantity : 1,
-    unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
+    unitPriceExclTax: Number.isFinite(unitPriceExclTax) ? unitPriceExclTax : 0,
+    vatRate: Number.isFinite(vatRate) ? vatRate : 0,
     available: item.available ?? true,
   };
 }
 
+export function getUnitPriceInclTax(item: CartLine): number {
+  return item.unitPriceExclTax * (1 + item.vatRate);
+}
+
+export function getLineTotalInclTax(item: CartLine): number {
+  return getUnitPriceInclTax(item) * item.quantity;
+}
+
 export function calculateCartTotals(items: CartLine[]) {
-  const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+  const subtotal = items.reduce((sum, item) => sum + getLineTotalInclTax(item), 0);
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   return { subtotal, totalItems };
 }

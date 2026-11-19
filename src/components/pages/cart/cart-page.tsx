@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { type ApiCart, type CartLine, calculateCartTotals, formatPrice, normalizeCartItem } from '@/components/pages/cart/cart-logic';
+import { type ApiCart, type CartLine, calculateCartTotals, formatPrice, getLineTotalInclTax, normalizeCartItem } from '@/components/pages/cart/cart-logic';
 import { Choice } from '@/components/shared/forms/choice';
 import { SideMenu } from '@/components/shared/navigation/side-menu';
 import { ThemedText } from '@/components/shared/ui/themed-text';
@@ -58,8 +58,8 @@ export function CartPage() {
   async function addItem(item: RecommendedItem) {
     setBusy(true);
     try {
-      const data = await api.post<ApiCart>('/api/cart/items', { variantId: item.id, quantity: 1 }, { auth: false });
-      setItems((data?.items ?? []).map(normalizeCartItem));
+      await api.post<ApiCart>('/api/cart/items', { variantId: item.id, quantity: 1 }, { auth: false });
+      await refreshCart();
       setError('');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Impossible d’ajouter cet article.');
@@ -75,14 +75,13 @@ export function CartPage() {
     setBusy(true);
     try {
       if (nextQuantity <= 0) {
-        const data = await api.delete<ApiCart>(`/api/cart/items/${itemId}`, { auth: false });
-        if (data?.items) setItems(data.items.map(normalizeCartItem));
-        else setItems((current) => current.filter((item) => item.id !== itemId));
+        await api.delete<ApiCart>(`/api/cart/items/${itemId}`, { auth: false });
+        await refreshCart();
         return;
       }
 
-      const data = await api.patch<ApiCart>(`/api/cart/items/${itemId}`, { quantity: nextQuantity }, { auth: false });
-      setItems((data?.items ?? []).map(normalizeCartItem));
+      await api.patch<ApiCart>(`/api/cart/items/${itemId}`, { quantity: nextQuantity }, { auth: false });
+      await refreshCart();
       setError('');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Impossible de mettre à jour le panier.');
@@ -94,8 +93,8 @@ export function CartPage() {
   async function removeItem(itemId: number) {
     setBusy(true);
     try {
-      const data = await api.delete<ApiCart>(`/api/cart/items/${itemId}`, { auth: false });
-      setItems((data?.items ?? []).map(normalizeCartItem));
+      await api.delete<ApiCart>(`/api/cart/items/${itemId}`, { auth: false });
+      await refreshCart();
       setError('');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Impossible de supprimer cet article.');
@@ -151,7 +150,7 @@ export function CartPage() {
                   </View>
 
                   <View style={styles.priceBlock}>
-                    <ThemedText style={LoginTypography.body}>{formatPrice(item.unitPrice * item.quantity)}</ThemedText>
+                    <ThemedText style={LoginTypography.body}>{formatPrice(getLineTotalInclTax(item))}</ThemedText>
                     <Pressable accessibilityRole="button" accessibilityLabel={`Supprimer ${item.name}`} disabled={busy} onPress={() => void removeItem(item.id)} style={({ pressed }) => [styles.removeButton, { opacity: pressed || busy ? 0.7 : 1, borderColor: theme.border }]}>
                       <ThemedText style={LoginTypography.body} themeColor="danger">Supprimer</ThemedText>
                     </Pressable>
@@ -191,7 +190,7 @@ export function CartPage() {
             <Pressable
               accessibilityRole="button"
               disabled={items.length === 0 || busy}
-              onPress={() => router.navigate('/orders')}
+              onPress={() => router.navigate('/checkout' as never)}
               style={({ pressed }) => [styles.primaryButton, { backgroundColor: items.length === 0 || busy ? theme.border : theme.accent, opacity: pressed ? 0.9 : 1 }]}
             >
               <ThemedText themeColor={items.length === 0 || busy ? 'text' : 'onAccent'} style={LoginTypography.button}>

@@ -28,6 +28,9 @@ export default function RootLayout() {
         <Stack.Screen name="login" options={{ title: 'Connexion · LOG' }} />
         <Stack.Screen name="home" options={{ title: 'Accueil · LOG' }} />
         <Stack.Screen name="cart" options={{ title: 'Panier · LOG' }} />
+        <Stack.Screen name="checkout" options={{ title: 'Paiement · LOG' }} />
+        <Stack.Screen name="checkout-success" options={{ title: 'Commande validée · LOG' }} />
+        <Stack.Screen name="checkout-cancel" options={{ title: 'Paiement annulé · LOG' }} />
         <Stack.Screen name="orders" options={{ title: 'Commandes · LOG' }} />
         <Stack.Screen name="orders/[id]" options={{ title: 'Suivi de commande · LOG' }} />
         <Stack.Screen name="auth-callback" options={{ title: 'Connexion · LOG' }} />
