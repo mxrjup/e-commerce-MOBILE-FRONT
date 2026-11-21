@@ -88,14 +88,37 @@ export function SideMenu() {
                 <ThemedText style={LoginTypography.button}>Commandes</ThemedText>
               </Pressable>
               <View style={styles.spacer} />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ disabled: !!user && busy, busy: !!user && busy }}
-                disabled={!!user && busy}
-                onPress={() => { close(); if (user) { void signOut(); } else { router.navigate('/login'); } }}
-                style={({ pressed }) => [styles.menuItem, { borderColor: theme.border, borderWidth: 1 }, (pressed || (!!user && busy)) && styles.dimmed]}>
-                <ThemedText style={LoginTypography.button} themeColor={user ? 'danger' : 'text'}>{user ? 'Se déconnecter' : 'Se connecter'}</ThemedText>
-              </Pressable>
+              {user ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: busy, busy }}
+                  disabled={busy}
+                  onPress={() => { close(); void signOut(); }}
+                  style={({ pressed }) => [styles.menuItem, { borderColor: theme.border, borderWidth: 1 }, (pressed || busy) && styles.dimmed]}>
+                  <ThemedText style={LoginTypography.button} themeColor="danger">Se déconnecter</ThemedText>
+                </Pressable>
+              ) : (
+                <View style={styles.authActions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: pathname === '/login' }}
+                    onPress={() => { close(); router.navigate('/login'); }}
+                    style={({ pressed }) => [styles.menuItem, { backgroundColor: theme.accent }, pressed && styles.dimmed]}>
+                    <ThemedText style={[LoginTypography.button, { color: theme.onAccent }]}>Se connecter</ThemedText>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: pathname === '/register' }}
+                    onPress={() => { close(); router.navigate('/register'); }}
+                    style={({ pressed }) => [
+                      styles.menuItem,
+                      { borderColor: theme.borderStrong, borderWidth: 1, backgroundColor: pathname === '/register' ? theme.backgroundSelected : theme.background },
+                      pressed && styles.dimmed,
+                    ]}>
+                    <ThemedText style={LoginTypography.button}>Créer un compte</ThemedText>
+                  </Pressable>
+                </View>
+              )}
             </ScrollView>
           </SafeAreaView>
         </View>
@@ -116,5 +139,6 @@ const styles = StyleSheet.create({
   menuItem: { minHeight: ControlSize.primary, padding: Spacing.three, borderRadius: Radius.control, justifyContent: 'center' },
   spacer: { flex: 1 },
   dimmed: { opacity: 0.75 },
+  authActions: { gap: Spacing.small },
 });
 
