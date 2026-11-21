@@ -1,5 +1,3 @@
-import { readCartSessionToken, writeCartSessionToken } from '@/services/session-storage';
-
 type ApiErrorCode = 'http_error' | 'network_error' | 'auth_required' | 'auth_refresh_failed' | 'invalid_response';
 
 export class ApiError extends Error {
@@ -46,24 +44,13 @@ export function getApiErrorMessage(cause: unknown, timedOut = false): string {
   return 'Impossible de charger les données pour le moment.';
 }
 
-export function createApiClient(baseUrl: string, getAccessToken: () => Promise<string | null>) {
+type CartSessionStorage = { read: () => Promise<string | null>; write: (token: string | null) => Promise<void> };
+
+export function createApiClient(baseUrl: string, getAccessToken: () => Promise<string | null>, cartStorage?: CartSessionStorage) {
   const base = new URL(baseUrl);
-  let cartSessionTokenPromise: Promise<string | null> | null = null;
 
   function isCartPath(path: string): boolean {
     return path === '/api/cart' || path.startsWith('/api/cart/');
-  }
-
-  async function readCachedCartSessionToken(): Promise<string | null> {
-    if (!cartSessionTokenPromise) {
-      cartSessionTokenPromise = readCartSessionToken();
-    }
-    return cartSessionTokenPromise;
-  }
-
-  async function cacheCartSessionToken(token: string | null) {
-    cartSessionTokenPromise = Promise.resolve(token);
-    await writeCartSessionToken(token);
   }
 
   async function request<T = unknown>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -75,8 +62,8 @@ export function createApiClient(baseUrl: string, getAccessToken: () => Promise<s
     const headers = new Headers(options.headers);
     headers.set('Accept', 'application/json');
 
-    if (isCartPath(path)) {
-      const sessionToken = await readCachedCartSessionToken();
+    if (isCartPath(url.pathname) || url.pathname === '/api/orders/checkout') {
+      const sessionToken = await cartStorage?.read();
       if (sessionToken) {
         headers.set('X-Session-Token', sessionToken);
       }
@@ -111,10 +98,12 @@ export function createApiClient(baseUrl: string, getAccessToken: () => Promise<s
       });
       text = await response.text();
 
-      if (isCartPath(path)) {
+      if (response.ok && isCartPath(url.pathname)) {
         const sessionToken = response.headers.get('X-Session-Token');
-        if (sessionToken) {
-          await cacheCartSessionToken(sessionToken);
+        if (url.pathname === '/api/cart/merge') {
+          await cartStorage?.write(null);
+        } else if (sessionToken) {
+          await cartStorage?.write(sessionToken);
         }
       }
     } catch (cause) {

@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,23 +11,24 @@ import { ThemedView } from '@/components/shared/ui/themed-view';
 import { ControlSize, LoginTypography, Radius, Spacing } from '@/constants/theme';
 import { useApi } from '@/hooks/use-api';
 import { useTheme } from '@/hooks/use-theme';
-
-type RecommendedItem = {
-  id: number;
-  name: string;
-  price: number;
-  description: string;
-};
-
-const recommendedAccessories: RecommendedItem[] = [
-  { id: 101, name: 'Station d’accueil', price: 89.0, description: 'Charge rapide et rangement' },
-  { id: 102, name: 'Sac de transport', price: 59.0, description: 'Protection et mobilité' },
-  { id: 103, name: 'Clavier compact', price: 129.0, description: 'Ergonomie quotidienne' },
-];
+import { useAuth } from '@/hooks/use-auth';
+import { loadCartRecommendations, type RecommendedItem } from '@/services/cart-recommendations';
 
 export function CartPage() {
   const theme = useTheme();
   const api = useApi();
+  const { user } = useAuth();
+  const [recommendedAccessories, setRecommendations] = useState<RecommendedItem[]>([]);
+  const [recommendationError, setRecommendationError] = useState('');
+  useEffect(() => {
+    let active = true;
+    loadCartRecommendations(api).then(items => {
+      if (active) { setRecommendations(items); setRecommendationError(''); }
+    }).catch(() => {
+      if (active) { setRecommendations([]); setRecommendationError('Les suggestions sont indisponibles pour le moment.'); }
+    });
+    return () => { active = false; };
+  }, [api]);
   const [items, setItems] = useState<CartLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -36,7 +37,9 @@ export function CartPage() {
   const refreshCart = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await api.get<ApiCart>('/api/cart', { auth: false });
+      // Reading the cart must not trigger a merge. The gateway currently forwards
+      // X-Auth-Subject, whereas the merge endpoint still requires X-User-Id.
+      const data = await api.get<ApiCart>('/api/cart', { auth: Boolean(user) });
       setItems((data?.items ?? []).map(normalizeCartItem));
       setError('');
     } catch (cause) {
@@ -45,7 +48,7 @@ export function CartPage() {
     } finally {
       setLoading(false);
     }
-  }, [api]);
+  }, [api, user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -58,9 +61,8 @@ export function CartPage() {
   async function addItem(item: RecommendedItem) {
     setBusy(true);
     try {
-      await api.post<ApiCart>('/api/cart/items', { variantId: item.id, quantity: 1 }, { auth: false });
+      await api.post<ApiCart>('/api/cart/items', { variantId: item.id, quantity: 1 }, { auth: Boolean(user) });
       await refreshCart();
-      setError('');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Impossible d’ajouter cet article.');
     } finally {
@@ -75,14 +77,13 @@ export function CartPage() {
     setBusy(true);
     try {
       if (nextQuantity <= 0) {
-        await api.delete<ApiCart>(`/api/cart/items/${itemId}`, { auth: false });
+        await api.delete<ApiCart>(`/api/cart/items/${itemId}`, { auth: Boolean(user) });
         await refreshCart();
         return;
       }
 
-      await api.patch<ApiCart>(`/api/cart/items/${itemId}`, { quantity: nextQuantity }, { auth: false });
+      await api.patch<ApiCart>(`/api/cart/items/${itemId}`, { quantity: nextQuantity }, { auth: Boolean(user) });
       await refreshCart();
-      setError('');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Impossible de mettre à jour le panier.');
     } finally {
@@ -93,9 +94,8 @@ export function CartPage() {
   async function removeItem(itemId: number) {
     setBusy(true);
     try {
-      await api.delete<ApiCart>(`/api/cart/items/${itemId}`, { auth: false });
+      await api.delete<ApiCart>(`/api/cart/items/${itemId}`, { auth: Boolean(user) });
       await refreshCart();
-      setError('');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Impossible de supprimer cet article.');
     } finally {
@@ -166,7 +166,8 @@ export function CartPage() {
           )}
 
           <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}> 
-            <ThemedText accessibilityRole="header" style={LoginTypography.label} themeColor="textMuted">Accessoires recommandés</ThemedText>
+            <ThemedText accessibilityRole="header" style={LoginTypography.label} themeColor="textMuted">Articles disponibles</ThemedText>
+            {!!recommendationError && <ThemedText accessibilityRole="alert">{recommendationError}</ThemedText>}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recommendationList}>
               {recommendedAccessories.map((item) => (
                 <View key={item.id} style={[styles.recommendationCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>

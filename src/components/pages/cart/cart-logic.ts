@@ -39,15 +39,15 @@ export function normalizeCartItem(item: ApiCartItem): CartLine {
 }
 
 export function getUnitPriceInclTax(item: CartLine): number {
-  return item.unitPriceExclTax * (1 + item.vatRate);
+  return item.unitPriceExclTax * (1 + item.vatRate / 100);
 }
 
 export function getLineTotalInclTax(item: CartLine): number {
-  return getUnitPriceInclTax(item) * item.quantity;
+  return Math.round((getUnitPriceInclTax(item) * item.quantity + Number.EPSILON) * 100) / 100;
 }
 
 export function calculateCartTotals(items: CartLine[]) {
-  const subtotal = items.reduce((sum, item) => sum + getLineTotalInclTax(item), 0);
+  const subtotal = Math.round(items.reduce((sum, item) => sum + getLineTotalInclTax(item), 0) * 100) / 100;
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   return { subtotal, totalItems };
 }
