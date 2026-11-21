@@ -2,7 +2,19 @@ import { CodeChallengeMethod, makeRedirectUri, Prompt, ResponseType, useAuthRequ
 import * as WebBrowser from 'expo-web-browser';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
-import { endpoint, exchangeCode, fetchUser, KeycloakError, refreshTokens, revokeRefreshToken, type Tokens, type User } from '@/services/keycloak';
+import {
+  buildAuthorizationUrl,
+  endpoint,
+  exchangeCode,
+  fetchUser,
+  KeycloakError,
+  refreshTokens,
+  revokeRefreshToken,
+  type AuthMode,
+  type AuthProviderId,
+  type Tokens,
+  type User,
+} from '@/services/keycloak';
 import { readRefreshToken, writeRefreshToken } from '@/services/session-storage';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -16,31 +28,51 @@ const config = {
 };
 const discovery = { authorizationEndpoint: endpoint(config, 'auth') };
 const redirectUri = makeRedirectUri({ scheme: 'ecommerce', path: 'auth-callback' });
+
 type Session = { tokens: Tokens; expiresAt: number; user: User };
+type AuthActionOptions = { mode?: AuthMode; provider?: AuthProviderId };
+
 type AuthContextValue = {
   user: User | null;
   busy: boolean;
+  activeProvider: AuthProviderId | null;
   ready: boolean;
   error: string;
-  signIn: () => Promise<void>;
+  clearError: () => void;
+  signIn: (options?: AuthActionOptions) => Promise<void>;
+  register: (provider?: AuthProviderId) => Promise<void>;
   signOut: () => Promise<void>;
   getAccessToken: () => Promise<string | null>;
 };
+
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+function formatAuthFailure(mode: AuthMode, provider: AuthProviderId): string {
+  const action = mode === 'register' ? 'L’inscription' : 'La connexion';
+  if (provider === 'google') return `${action} avec Google a échoué. Vérifiez que le fournisseur est activé puis réessayez.`;
+  if (provider === 'apple') return `${action} avec Apple a échoué. Vérifiez que le fournisseur est activé puis réessayez.`;
+  return `${action} a échoué. Veuillez réessayer.`;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const current = useRef<Session | null>(null);
   const [busy, setBusy] = useState(true);
+  const [activeProvider, setActiveProvider] = useState<AuthProviderId | null>(null);
   const locked = useRef(true);
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
   const refreshInFlight = useRef<Promise<string | null> | null>(null);
+
   const [request, , promptAsync] = useAuthRequest({
-    clientId: config.clientId, redirectUri, responseType: ResponseType.Code,
-    scopes: ['openid', 'profile', 'email'], usePKCE: true,
-    codeChallengeMethod: CodeChallengeMethod.S256, prompt: Prompt.Login,
-    extraParams: { ui_locales: 'fr', 'app_attempt': String(attempt) },
+    clientId: config.clientId,
+    redirectUri,
+    responseType: ResponseType.Code,
+    scopes: ['openid', 'profile', 'email'],
+    usePKCE: true,
+    codeChallengeMethod: CodeChallengeMethod.S256,
+    prompt: Prompt.Login,
+    extraParams: { ui_locales: 'fr', app_attempt: String(attempt) },
   }, discovery);
 
   async function accept(tokens: Tokens) {
@@ -73,27 +105,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { active = false; };
   }, []);
 
-  async function signIn() {
+  async function authenticate(options: AuthActionOptions = {}) {
+    const mode: AuthMode = options.mode ?? 'login';
+    const provider: AuthProviderId = options.provider ?? 'email';
     if (locked.current || !request) return;
+
     locked.current = true;
     setBusy(true);
+    setActiveProvider(provider);
     setError('');
+
     try {
-      // Keep the browser prompt directly in the button event for web popup policies.
-      const result = await promptAsync();
+      const baseAuthUrl = request.url ?? (await request.makeAuthUrlAsync(discovery));
+      const targetUrl = buildAuthorizationUrl(baseAuthUrl, { mode, provider });
+      const result = await promptAsync({ url: targetUrl });
+
       if (result.type === 'success' && result.params.code && request.codeVerifier) {
         await accept(await exchangeCode(config, result.params.code, request.codeVerifier, redirectUri));
       } else if (result.type !== 'cancel' && result.type !== 'dismiss') {
-        setError('La connexion a échoué. Veuillez réessayer.');
+        setError(formatAuthFailure(mode, provider));
       }
     } catch {
-      setError('Impossible de vous connecter. Vérifiez votre connexion puis réessayez.');
+      setError('Impossible de joindre le service d’authentification. Vérifiez votre connexion puis réessayez.');
     } finally {
-      // Generate a fresh verifier/state for the next authorization attempt.
       setAttempt(value => value + 1);
       locked.current = false;
+      setActiveProvider(null);
       setBusy(false);
     }
+  }
+
+  async function signIn(options: AuthActionOptions = {}) {
+    return authenticate({ mode: options.mode ?? 'login', provider: options.provider ?? 'email' });
+  }
+
+  async function register(provider: AuthProviderId = 'email') {
+    return authenticate({ mode: 'register', provider });
   }
 
   async function signOut() {
@@ -141,7 +188,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return refreshInFlight.current;
   }
 
-  return <AuthContext.Provider value={{ user: session?.user || null, busy, ready: !!request, error, signIn, signOut, getAccessToken }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user: session?.user || null,
+        busy,
+        activeProvider,
+        ready: !!request,
+        error,
+        clearError: () => setError(''),
+        signIn,
+        register,
+        signOut,
+        getAccessToken,
+      }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
@@ -149,4 +212,3 @@ export function useAuth() {
   if (!auth) throw new Error('useAuth requires AuthProvider');
   return auth;
 }
-
