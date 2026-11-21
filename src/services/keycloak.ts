@@ -11,8 +11,11 @@ export type Tokens = {
 export type User = { sub: string; name?: string; preferred_username?: string; email?: string };
 
 export class KeycloakError extends Error {
-  constructor(public code: string) {
+  code: string;
+
+  constructor(code: string) {
     super('La connexion a échoué. Veuillez réessayer.');
+    this.code = code;
   }
 }
 
@@ -92,3 +95,4 @@ export async function revokeRefreshToken(config: KeycloakConfig, token: string) 
   });
   if (!response.ok) throw new KeycloakError('revocation_error');
 }
+
