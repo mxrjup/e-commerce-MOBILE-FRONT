@@ -1,6 +1,9 @@
 import { CodeChallengeMethod, makeRedirectUri, Prompt, ResponseType, useAuthRequest } from 'expo-auth-session';
+import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Platform } from 'react-native';
+
 
 import {
   buildAuthorizationUrl,
@@ -27,7 +30,12 @@ const config = {
   clientId: process.env.EXPO_PUBLIC_KEYCLOAK_CLIENT_ID || 'mobile-app',
 };
 const discovery = { authorizationEndpoint: endpoint(config, 'auth') };
-const redirectUri = makeRedirectUri({ scheme: 'ecommerce', path: 'auth-callback' });
+
+const hostUri = Constants.expoConfig?.hostUri;
+const redirectUri =
+  Platform.OS !== 'web' && hostUri
+    ? `exp://${hostUri}/--/auth-callback`
+    : makeRedirectUri({ scheme: 'mobile', path: 'auth-callback' });
 
 type Session = { tokens: Tokens; expiresAt: number; user: User };
 type AuthActionOptions = { mode?: AuthMode; provider?: AuthProviderId };
@@ -54,6 +62,15 @@ function formatAuthFailure(mode: AuthMode, provider: AuthProviderId): string {
   return `${action} a échoué. Veuillez réessayer.`;
 }
 
+function extractAuthCode(callbackUrl: string): string | null {
+  try {
+    return new URL(callbackUrl).searchParams.get('code');
+  } catch {
+    const match = callbackUrl.match(/[?&]code=([^&#]+)/);
+    return match ? decodeURIComponent(match[1]) : null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const current = useRef<Session | null>(null);
@@ -64,16 +81,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [attempt, setAttempt] = useState(0);
   const refreshInFlight = useRef<Promise<string | null> | null>(null);
 
-  const [request, , promptAsync] = useAuthRequest({
-    clientId: config.clientId,
-    redirectUri,
-    responseType: ResponseType.Code,
-    scopes: ['openid', 'profile', 'email'],
-    usePKCE: true,
-    codeChallengeMethod: CodeChallengeMethod.S256,
-    prompt: Prompt.Login,
-    extraParams: { ui_locales: 'fr', app_attempt: String(attempt) },
-  }, discovery);
+  const [request] = useAuthRequest(
+    {
+      clientId: config.clientId,
+      redirectUri,
+      responseType: ResponseType.Code,
+      scopes: ['openid', 'profile', 'email'],
+      usePKCE: true,
+      codeChallengeMethod: CodeChallengeMethod.S256,
+      prompt: Prompt.Login,
+      extraParams: { ui_locales: 'fr', app_attempt: String(attempt) },
+    },
+    discovery
+  );
 
   async function accept(tokens: Tokens) {
     const user = await fetchUser(config, tokens.access_token);
@@ -98,11 +118,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         if (active) setError('Votre session n’a pas pu être restaurée. Veuillez vous reconnecter.');
       } finally {
-        if (active) { locked.current = false; setBusy(false); }
+        if (active) {
+          locked.current = false;
+          setBusy(false);
+        }
       }
     }
     void restore();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, []);
 
   async function authenticate(options: AuthActionOptions = {}) {
@@ -118,10 +143,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const baseAuthUrl = request.url ?? (await request.makeAuthUrlAsync(discovery));
       const targetUrl = buildAuthorizationUrl(baseAuthUrl, { mode, provider });
-      const result = await promptAsync({ url: targetUrl });
+      const result = await WebBrowser.openAuthSessionAsync(targetUrl, redirectUri);
 
-      if (result.type === 'success' && result.params.code && request.codeVerifier) {
-        await accept(await exchangeCode(config, result.params.code, request.codeVerifier, redirectUri));
+      if (result.type === 'success' && result.url && request.codeVerifier) {
+        const code = extractAuthCode(result.url);
+        if (code) {
+          await accept(await exchangeCode(config, code, request.codeVerifier, redirectUri));
+        } else {
+          setError(formatAuthFailure(mode, provider));
+        }
       } else if (result.type !== 'cancel' && result.type !== 'dismiss') {
         setError(formatAuthFailure(mode, provider));
       }
@@ -183,7 +213,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setError('Votre session a expiré. Veuillez vous reconnecter.');
         }
         throw cause;
-      } finally { refreshInFlight.current = null; }
+      } finally {
+        refreshInFlight.current = null;
+      }
     })();
     return refreshInFlight.current;
   }
