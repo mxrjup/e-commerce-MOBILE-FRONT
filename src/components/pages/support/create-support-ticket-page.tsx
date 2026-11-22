@@ -40,6 +40,12 @@ type SelectedOrder = {
   orderNumber: string;
 };
 
+type LoadedOrdersState = {
+  user: ReturnType<typeof useAuth>['user'];
+  api: ReturnType<typeof useApi>;
+  orders: OrderHistoryEntry[];
+};
+
 function readSingleParam(value: string | string[] | undefined): string {
   return typeof value === 'string' ? value : Array.isArray(value) ? value[0] ?? '' : '';
 }
@@ -53,13 +59,9 @@ export function CreateSupportTicketPage() {
   const preselectedOrderId = parsePositiveTicketId(readSingleParam(params.orderId));
   const preselectedOrderNumber = readSingleParam(params.orderNumber).trim();
 
-  const [orders, setOrders] = useState<OrderHistoryEntry[]>([]);
-  const [loadingOrders, setLoadingOrders] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<SelectedOrder | null>(() =>
-    preselectedOrderId && preselectedOrderNumber
-      ? { id: preselectedOrderId, orderNumber: preselectedOrderNumber }
-      : null
-  );
+  const [ordersState, setOrdersState] = useState<LoadedOrdersState>();
+  const [orderSelectionTouched, setOrderSelectionTouched] = useState(false);
+  const [manualSelectedOrder, setManualSelectedOrder] = useState<SelectedOrder | null>(null);
   const [category, setCategory] = useState<TicketCategory>(() =>
     preselectedOrderId ? 'ORDER' : 'OTHER'
   );
@@ -73,39 +75,54 @@ export function CreateSupportTicketPage() {
   const subjectRef = useRef<ComponentRef<typeof TextInput>>(null);
   const messageRef = useRef<ComponentRef<typeof TextInput>>(null);
 
+  const currentOrders =
+    user && ordersState?.user === user && ordersState.api === api ? ordersState : undefined;
+  const orders = currentOrders?.orders ?? [];
+  const loadingOrders = !!user && !currentOrders;
+
+  const matchedPreselectedOrder = preselectedOrderId
+    ? orders.find((item) => Number(item.id) === preselectedOrderId)
+    : undefined;
+
+  const defaultSelectedOrder: SelectedOrder | null = matchedPreselectedOrder
+    ? { id: Number(matchedPreselectedOrder.id), orderNumber: matchedPreselectedOrder.orderNumber }
+    : preselectedOrderId && preselectedOrderNumber
+      ? { id: preselectedOrderId, orderNumber: preselectedOrderNumber }
+      : null;
+
+  const selectedOrder = orderSelectionTouched ? manualSelectedOrder : defaultSelectedOrder;
+
   useEffect(() => {
     if (!user) return;
     let active = true;
-    setLoadingOrders(true);
 
     api
       .get<ApiOrderHistoryItem[]>('/api/orders/history')
       .then((data) => {
         if (!active) return;
-        const mapped = mapOrderHistoryResponse(data);
-        setOrders(mapped);
-        if (preselectedOrderId) {
-          const matched = mapped.find((item) => Number(item.id) === preselectedOrderId);
-          if (matched) {
-            setSelectedOrder({ id: Number(matched.id), orderNumber: matched.orderNumber });
-          }
-        }
+        setOrdersState({
+          user,
+          api,
+          orders: mapOrderHistoryResponse(data),
+        });
       })
       .catch(() => {
         if (!active) return;
-        setOrders([]);
-      })
-      .finally(() => {
-        if (active) setLoadingOrders(false);
+        setOrdersState({
+          user,
+          api,
+          orders: [],
+        });
       });
 
     return () => {
       active = false;
     };
-  }, [api, user, preselectedOrderId]);
+  }, [api, user]);
 
   function handleSelectOrder(nextOrder: SelectedOrder | null) {
-    setSelectedOrder(nextOrder);
+    setOrderSelectionTouched(true);
+    setManualSelectedOrder(nextOrder);
     if (!categoryTouched) {
       setCategory(nextOrder ? 'ORDER' : 'OTHER');
     }
