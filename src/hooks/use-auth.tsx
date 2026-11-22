@@ -1,8 +1,8 @@
 import { CodeChallengeMethod, makeRedirectUri, Prompt, ResponseType, useAuthRequest } from 'expo-auth-session';
-import Constants from 'expo-constants';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Platform } from 'react-native';
+
 
 
 import {
@@ -32,10 +32,11 @@ const config = {
 const discovery = { authorizationEndpoint: endpoint(config, 'auth') };
 
 const hostUri = Constants.expoConfig?.hostUri;
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 const redirectUri =
-  Platform.OS !== 'web' && hostUri
+  isExpoGo && hostUri
     ? `exp://${hostUri}/--/auth-callback`
-    : makeRedirectUri({ scheme: 'mobile', path: 'auth-callback' });
+    : makeRedirectUri({ scheme: 'ecommerce', path: 'auth-callback' });
 
 type Session = { tokens: Tokens; expiresAt: number; user: User };
 type AuthActionOptions = { mode?: AuthMode; provider?: AuthProviderId };
