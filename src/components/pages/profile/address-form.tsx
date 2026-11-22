@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ComponentRef } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/shared/ui/themed-text';
@@ -39,12 +39,12 @@ export function AddressForm({
   const [isDefault, setIsDefault] = useState(initialAddress?.isDefault ?? false);
   const [errors, setErrors] = useState<AddressFieldErrors>({});
 
-  const recipientRef = useRef<TextInput>(null);
-  const streetRef = useRef<TextInput>(null);
-  const complementRef = useRef<TextInput>(null);
-  const zipCodeRef = useRef<TextInput>(null);
-  const cityRef = useRef<TextInput>(null);
-  const countryRef = useRef<TextInput>(null);
+  const recipientRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const streetRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const complementRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const zipCodeRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const cityRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const countryRef = useRef<ComponentRef<typeof TextInput>>(null);
 
   async function handleSubmit() {
     if (submitting) return;
@@ -245,7 +245,7 @@ export function AddressForm({
               if (errors.city) setErrors((prev) => ({ ...prev, city: undefined }));
             }}
             accessibilityLabel="Ville"
-            autoComplete="address-level2"
+            autoComplete="postal-address-locality"
             textContentType="addressCity"
             returnKeyType="next"
             onSubmitEditing={() => countryRef.current?.focus()}

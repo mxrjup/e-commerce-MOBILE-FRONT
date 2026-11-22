@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/shared/ui/themed-text';
@@ -35,9 +35,9 @@ export function ProfileDetailsCard({
   const [phone, setPhone] = useState(profile.phone);
   const [fieldErrors, setFieldErrors] = useState<UserProfileErrors>({});
 
-  const firstNameRef = useRef<TextInput>(null);
-  const lastNameRef = useRef<TextInput>(null);
-  const phoneRef = useRef<TextInput>(null);
+  const firstNameRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const lastNameRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const phoneRef = useRef<ComponentRef<typeof TextInput>>(null);
 
   useEffect(() => {
     if (!editing) {
