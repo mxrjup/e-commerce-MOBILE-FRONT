@@ -26,6 +26,7 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" options={{ title: 'Accueil · LOG' }} />
         <Stack.Screen name="login" options={{ title: 'Connexion · LOG' }} />
+        <Stack.Screen name="register" options={{ title: 'Inscription · LOG' }} />
         <Stack.Screen name="home" options={{ title: 'Accueil · LOG' }} />
         <Stack.Screen name="cart" options={{ title: 'Panier · LOG' }} />
         <Stack.Screen name="orders" options={{ title: 'Commandes · LOG' }} />

@@ -1,4 +1,7 @@
 export type KeycloakConfig = { issuer: string; clientId: string };
+export type AuthMode = 'login' | 'register';
+export type AuthProviderId = 'email' | 'google' | 'apple';
+
 export type Tokens = {
   access_token: string;
   refresh_token?: string;
@@ -8,13 +11,42 @@ export type Tokens = {
 export type User = { sub: string; name?: string; preferred_username?: string; email?: string };
 
 export class KeycloakError extends Error {
-  constructor(public code: string) {
+  code: string;
+
+  constructor(code: string) {
     super('La connexion a échoué. Veuillez réessayer.');
+    this.code = code;
   }
 }
 
 export function endpoint(config: KeycloakConfig, path: string) {
   return `${config.issuer.replace(/\/$/, '')}/protocol/openid-connect/${path}`;
+}
+
+export function buildAuthorizationUrl(
+  baseAuthUrl: string,
+  options: { mode?: AuthMode; provider?: AuthProviderId } = {},
+): string {
+  const mode = options.mode ?? 'login';
+  const provider = options.provider ?? 'email';
+  const url = new URL(baseAuthUrl);
+
+  url.searchParams.delete('kc_idp_hint');
+
+  if (provider === 'google' || provider === 'apple') {
+    url.searchParams.set('kc_idp_hint', provider);
+    return url.toString();
+  }
+
+  if (mode === 'register') {
+    url.pathname = url.pathname.replace(/\/protocol\/openid-connect\/auth$/, '/protocol/openid-connect/registrations');
+    url.searchParams.set('prompt', 'create');
+  } else {
+    url.pathname = url.pathname.replace(/\/protocol\/openid-connect\/registrations$/, '/protocol/openid-connect/auth');
+    url.searchParams.set('prompt', 'login');
+  }
+
+  return url.toString();
 }
 
 async function tokenRequest(config: KeycloakConfig, params: Record<string, string>): Promise<Tokens> {
