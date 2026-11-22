@@ -31,6 +31,7 @@ export default function RootLayout() {
         <Stack.Screen name="cart" options={{ title: 'Panier · LOG' }} />
         <Stack.Screen name="orders" options={{ title: 'Commandes · LOG' }} />
         <Stack.Screen name="orders/[id]" options={{ title: 'Suivi de commande · LOG' }} />
+        <Stack.Screen name="profile" options={{ title: 'Profil · LOG' }} />
         <Stack.Screen name="auth-callback" options={{ title: 'Connexion · LOG' }} />
       </Stack>
       </AuthProvider>
