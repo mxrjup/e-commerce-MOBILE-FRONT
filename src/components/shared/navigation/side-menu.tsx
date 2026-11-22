@@ -14,6 +14,7 @@ export function SideMenu() {
   const pathname = usePathname();
   const inCatalog = pathname === '/catalog' || pathname.startsWith('/catalog/');
   const inOrders = pathname === '/orders' || pathname.startsWith('/orders/');
+  const inProfile = pathname === '/profile' || pathname.startsWith('/profile/');
   const { user, busy, signOut } = useAuth();
   const theme = useTheme();
   const close = () => setOpen(false);
@@ -87,6 +88,13 @@ export function SideMenu() {
                 style={({ pressed }) => [styles.menuItem, { borderColor: theme.border, borderWidth: 1, backgroundColor: inOrders ? theme.backgroundSelected : theme.background }, pressed && styles.dimmed]}>
                 <ThemedText style={LoginTypography.button}>Commandes</ThemedText>
               </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: inProfile }}
+                onPress={() => { close(); router.navigate('/profile'); }}
+                style={({ pressed }) => [styles.menuItem, { borderColor: theme.border, borderWidth: 1, backgroundColor: inProfile ? theme.backgroundSelected : theme.background }, pressed && styles.dimmed]}>
+                <ThemedText style={LoginTypography.button}>Profil</ThemedText>
+              </Pressable>
               <View style={styles.spacer} />
               {user ? (
                 <Pressable
@@ -141,4 +149,3 @@ const styles = StyleSheet.create({
   dimmed: { opacity: 0.75 },
   authActions: { gap: Spacing.small },
 });
-
