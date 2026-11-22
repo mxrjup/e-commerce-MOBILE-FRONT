@@ -102,3 +102,14 @@ test('catalogue card displays real prices and opens the product by slug, not num
   result.press('Article test');
   assert.deepEqual(result.navigation, [['push', { pathname: '/product/[id]', params: { id: 'slug-produit' } }]]);
 });
+
+test('search results reuse the catalogue card and open the actual product slug', () => {
+  const product = { id: 73, slug: 'produit-recherche', title: 'Produit recherché', brand: { name: 'Marque', slug: 'marque' }, category: { name: 'Catégorie', slug: 'categorie' }, priceInclTax: 25, regularPriceInclTax: 30, imageUrl: null, available: true, variantCount: 2 };
+  const catalog = screen({}, {}, { file: 'src/components/shared/catalog/catalog-products.tsx', name: 'ProductLink', props: { product } });
+  const search = screen({}, {}, { file: 'src/components/pages/search/search-product-card.tsx', name: 'SearchProductCard', props: { product } });
+  assert.ok(search.html.includes(catalog.html), 'Search must render the same card as the catalogue');
+  search.press('Voir le produit');
+  assert.deepEqual(search.navigation, [['push', { pathname: '/product/[id]', params: { id: 'produit-recherche' } }]]);
+  const single = screen({}, {}, { file: 'src/components/pages/search/search-product-card.tsx', name: 'SearchProductCard', props: { product: { ...product, variantCount: 1, regularPriceInclTax: null } } });
+  assert.doesNotMatch(single.html, /À partir de|30,00/);
+});
