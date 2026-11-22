@@ -63,7 +63,7 @@ export function OrderDetailPage() {
         </Pressable>
       </View>
 
-      <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}> 
+      <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
         <ThemedText style={LoginTypography.label} themeColor="textMuted">{order.orderNumber}</ThemedText>
         <View style={styles.titleRow}>
           <ThemedText accessibilityRole="header" style={LoginTypography.title}>Suivi de commande</ThemedText>
@@ -72,7 +72,7 @@ export function OrderDetailPage() {
         <ThemedText themeColor="textSecondary" style={LoginTypography.body}>{new Date(order.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</ThemedText>
       </View>
 
-      <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}> 
+      <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
         <ThemedText style={LoginTypography.label} themeColor="textMuted">État actuel</ThemedText>
         <ThemedText style={LoginTypography.lead}>{getOrderStatusLabel(order.status)}</ThemedText>
         <View style={styles.timeline}>
@@ -94,14 +94,14 @@ export function OrderDetailPage() {
         </View>
       </View>
 
-      <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}> 
+      <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
         <ThemedText style={LoginTypography.label} themeColor="textMuted">Livraison</ThemedText>
         <ThemedText style={LoginTypography.body}>Mode : {order.deliveryMode}</ThemedText>
         <ThemedText style={LoginTypography.body}>Suivi : {order.trackingNumber}</ThemedText>
         <ThemedText style={LoginTypography.body}>Adresse : {order.shippingAddress}</ThemedText>
       </View>
 
-      <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}> 
+      <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
         <ThemedText style={LoginTypography.label} themeColor="textMuted">Articles</ThemedText>
         {order.items.map(item => (
           <View key={`${order.id}-${item.name}`} style={styles.itemRow}>
@@ -121,6 +121,25 @@ export function OrderDetailPage() {
       <View style={styles.footerActions}>
         <Pressable accessibilityRole="button" onPress={() => void Linking.openURL(order.invoiceUrl)} style={({ pressed }) => [styles.primaryButton, { backgroundColor: theme.accent, opacity: pressed ? 0.9 : 1 }]}>
           <ThemedText themeColor="onAccent" style={LoginTypography.button}>Voir la facture</ThemedText>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Contacter le SAV pour la commande ${order.orderNumber}`}
+          onPress={() =>
+            router.navigate({
+              pathname: '/support/new',
+              params: {
+                orderId: String(order.id),
+                orderNumber: order.orderNumber,
+              },
+            })
+          }
+          style={({ pressed }) => [
+            styles.secondaryButton,
+            { backgroundColor: theme.background, borderColor: theme.borderStrong, opacity: pressed ? 0.78 : 1 },
+          ]}
+        >
+          <ThemedText style={LoginTypography.button}>Contacter le SAV</ThemedText>
         </Pressable>
       </View>
     </ScrollView>
@@ -158,6 +177,7 @@ const styles = StyleSheet.create({
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderTopWidth: 1 },
   itemInfo: { flex: 1, gap: 4 },
   totalBox: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, paddingTop: 12, marginTop: 8 },
-  footerActions: { paddingTop: 8 },
+  footerActions: { paddingTop: 8, gap: 12 },
   primaryButton: { minHeight: 52, borderRadius: Radius.control, justifyContent: 'center', alignItems: 'center', paddingVertical: Spacing.small },
+  secondaryButton: { minHeight: 48, borderWidth: 1, borderRadius: Radius.control, justifyContent: 'center', alignItems: 'center', paddingVertical: Spacing.small },
 });
