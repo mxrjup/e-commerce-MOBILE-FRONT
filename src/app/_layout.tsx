@@ -32,6 +32,8 @@ export default function RootLayout() {
         <Stack.Screen name="orders" options={{ title: 'Commandes · LOG' }} />
         <Stack.Screen name="orders/[id]" options={{ title: 'Suivi de commande · LOG' }} />
         <Stack.Screen name="profile" options={{ title: 'Profil · LOG' }} />
+        <Stack.Screen name="notifications" options={{ title: 'Notifications · LOG' }} />
+        <Stack.Screen name="notifications/alerts" options={{ title: 'Alertes catalogue · LOG' }} />
         <Stack.Screen name="auth-callback" options={{ title: 'Connexion · LOG' }} />
       </Stack>
       </AuthProvider>
