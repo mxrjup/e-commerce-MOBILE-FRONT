@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -33,15 +33,21 @@ type AddressEditorState =
   | { mode: 'create' }
   | { mode: 'edit'; address: Address };
 
+type LoadedState = {
+  user: ReturnType<typeof useAuth>['user'];
+  api: ReturnType<typeof useApi>;
+  profile: UserProfile | null;
+  addresses: Address[];
+  error: string;
+};
+
 export function ProfilePage() {
   const theme = useTheme();
   const { user, ready } = useAuth();
   const api = useApi();
 
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [addresses, setAddresses] = useState<Address[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState('');
+  const [result, setResult] = useState<LoadedState>();
+  const [reloadKey, setReloadKey] = useState(0);
 
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState('');
@@ -52,50 +58,66 @@ export function ProfilePage() {
   const [addressError, setAddressError] = useState('');
   const [addressSuccess, setAddressSuccess] = useState('');
 
-  const loadData = useCallback(async (signal?: AbortSignal) => {
-    if (!user) return;
-    setLoading(true);
-    setLoadError('');
-    try {
-      const [loadedProfile, loadedAddresses] = await Promise.all([
-        fetchUserProfile(api, signal),
-        fetchAddresses(api, signal),
-      ]);
-      if (signal?.aborted) return;
-      setProfile(loadedProfile);
-      setAddresses(loadedAddresses);
-    } catch (cause) {
-      if (signal?.aborted) return;
-      setLoadError(getApiErrorMessage(cause));
-    } finally {
-      if (!signal?.aborted) {
-        setLoading(false);
-      }
-    }
-  }, [api, user]);
+  const current = user && result?.user === user && result.api === api ? result : undefined;
+  const profile = current?.profile ?? null;
+  const addresses = current?.addresses ?? [];
+  const loadError = current?.error ?? '';
+  const loading = !!user && !current;
+  const activeEditor: AddressEditorState = user ? editor : { mode: 'closed' };
 
   useEffect(() => {
-    if (!user) {
-      setProfile(null);
-      setAddresses([]);
-      setLoadError('');
-      setEditor({ mode: 'closed' });
-      return;
-    }
+    if (!user) return;
     const controller = new AbortController();
-    void loadData(controller.signal);
+
+    Promise.all([
+      fetchUserProfile(api, controller.signal),
+      fetchAddresses(api, controller.signal),
+    ])
+      .then(([loadedProfile, loadedAddresses]) => {
+        if (controller.signal.aborted) return;
+        setResult({
+          user,
+          api,
+          profile: loadedProfile,
+          addresses: loadedAddresses,
+          error: '',
+        });
+      })
+      .catch((cause) => {
+        if (controller.signal.aborted) return;
+        setResult({
+          user,
+          api,
+          profile: null,
+          addresses: [],
+          error: getApiErrorMessage(cause),
+        });
+      });
+
     return () => {
       controller.abort();
     };
-  }, [loadData, user]);
+  }, [api, user, reloadKey]);
+
+  function retryLoad() {
+    setResult(undefined);
+    setReloadKey((value) => value + 1);
+  }
 
   async function handleSaveProfile(payload: UserProfileUpdatePayload): Promise<boolean> {
+    if (!user) return false;
     setSavingProfile(true);
     setProfileError('');
     setProfileSuccess('');
     try {
       const updated = await updateUserProfile(api, payload);
-      setProfile(updated);
+      setResult((prev) => ({
+        user,
+        api,
+        profile: updated,
+        addresses: prev?.addresses ?? [],
+        error: '',
+      }));
       setProfileSuccess('Vos informations ont été mises à jour.');
       return true;
     } catch (cause) {
@@ -107,20 +129,26 @@ export function ProfilePage() {
   }
 
   async function handleAddressSubmit(payload: AddressPayload) {
-    if (editor.mode === 'closed') return;
+    if (!user || activeEditor.mode === 'closed') return;
     setAddressBusy(true);
     setAddressError('');
     setAddressSuccess('');
     try {
-      if (editor.mode === 'create') {
+      if (activeEditor.mode === 'create') {
         await createAddress(api, payload);
         setAddressSuccess('Adresse ajoutée à votre carnet.');
       } else {
-        await updateAddress(api, editor.address.id, payload);
+        await updateAddress(api, activeEditor.address.id, payload);
         setAddressSuccess('Adresse mise à jour.');
       }
       const refreshed = await fetchAddresses(api);
-      setAddresses(refreshed);
+      setResult((prev) => ({
+        user,
+        api,
+        profile: prev?.profile ?? null,
+        addresses: refreshed,
+        error: '',
+      }));
       setEditor({ mode: 'closed' });
     } catch (cause) {
       setAddressError(getApiErrorMessage(cause));
@@ -130,13 +158,20 @@ export function ProfilePage() {
   }
 
   async function handleSetDefault(id: number) {
+    if (!user) return;
     setAddressBusy(true);
     setAddressError('');
     setAddressSuccess('');
     try {
       await setDefaultAddress(api, id);
       const refreshed = await fetchAddresses(api);
-      setAddresses(refreshed);
+      setResult((prev) => ({
+        user,
+        api,
+        profile: prev?.profile ?? null,
+        addresses: refreshed,
+        error: '',
+      }));
       setAddressSuccess('Adresse par défaut mise à jour.');
     } catch (cause) {
       setAddressError(getApiErrorMessage(cause));
@@ -146,14 +181,21 @@ export function ProfilePage() {
   }
 
   async function handleDeleteAddress(id: number) {
+    if (!user) return;
     setAddressBusy(true);
     setAddressError('');
     setAddressSuccess('');
     try {
       await deleteAddress(api, id);
       const refreshed = await fetchAddresses(api);
-      setAddresses(refreshed);
-      if (editor.mode === 'edit' && editor.address.id === id) {
+      setResult((prev) => ({
+        user,
+        api,
+        profile: prev?.profile ?? null,
+        addresses: refreshed,
+        error: '',
+      }));
+      if (activeEditor.mode === 'edit' && activeEditor.address.id === id) {
         setEditor({ mode: 'closed' });
       }
       setAddressSuccess('Adresse supprimée.');
@@ -211,7 +253,7 @@ export function ProfilePage() {
                 <ThemedText style={[LoginTypography.body, { color: theme.danger }]}>{loadError}</ThemedText>
                 <Pressable
                   accessibilityRole="button"
-                  onPress={() => void loadData()}
+                  onPress={retryLoad}
                   style={({ pressed }) => [
                     styles.secondaryButton,
                     { backgroundColor: theme.background, borderColor: theme.borderStrong },
@@ -250,7 +292,7 @@ export function ProfilePage() {
                       </ThemedText>
                     </View>
 
-                    {editor.mode === 'closed' && (
+                    {activeEditor.mode === 'closed' && (
                       <Pressable
                         accessibilityRole="button"
                         accessibilityLabel="Ajouter une adresse"
@@ -283,7 +325,7 @@ export function ProfilePage() {
                     </View>
                   )}
 
-                  {!!addressError && editor.mode === 'closed' && (
+                  {!!addressError && activeEditor.mode === 'closed' && (
                     <View
                       accessibilityLiveRegion="polite"
                       style={[styles.banner, { backgroundColor: theme.dangerSoft }]}
@@ -294,10 +336,10 @@ export function ProfilePage() {
                     </View>
                   )}
 
-                  {editor.mode !== 'closed' && (
+                  {activeEditor.mode !== 'closed' && (
                     <AddressForm
-                      key={editor.mode === 'edit' ? `edit-${editor.address.id}` : 'create'}
-                      initialAddress={editor.mode === 'edit' ? editor.address : undefined}
+                      key={activeEditor.mode === 'edit' ? `edit-${activeEditor.address.id}` : 'create'}
+                      initialAddress={activeEditor.mode === 'edit' ? activeEditor.address : undefined}
                       submitting={addressBusy}
                       submitError={addressError}
                       onSubmit={handleAddressSubmit}
@@ -308,7 +350,7 @@ export function ProfilePage() {
                     />
                   )}
 
-                  {addresses.length === 0 && editor.mode === 'closed' ? (
+                  {addresses.length === 0 && activeEditor.mode === 'closed' ? (
                     <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
                       <ThemedText style={LoginTypography.body} themeColor="textSecondary">
                         Vous n’avez pas encore enregistré d’adresse de livraison.
