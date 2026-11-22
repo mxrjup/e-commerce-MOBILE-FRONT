@@ -15,6 +15,7 @@ export function SideMenu() {
   const inCatalog = pathname === '/catalog' || pathname.startsWith('/catalog/');
   const inOrders = pathname === '/orders' || pathname.startsWith('/orders/');
   const inProfile = pathname === '/profile' || pathname.startsWith('/profile/');
+  const inNotifications = pathname === '/notifications' || pathname.startsWith('/notifications/');
   const { user, busy, signOut } = useAuth();
   const theme = useTheme();
   const close = () => setOpen(false);
@@ -87,6 +88,13 @@ export function SideMenu() {
                 onPress={() => { close(); router.navigate('/orders'); }}
                 style={({ pressed }) => [styles.menuItem, { borderColor: theme.border, borderWidth: 1, backgroundColor: inOrders ? theme.backgroundSelected : theme.background }, pressed && styles.dimmed]}>
                 <ThemedText style={LoginTypography.button}>Commandes</ThemedText>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: inNotifications }}
+                onPress={() => { close(); router.navigate('/notifications'); }}
+                style={({ pressed }) => [styles.menuItem, { borderColor: theme.border, borderWidth: 1, backgroundColor: inNotifications ? theme.backgroundSelected : theme.background }, pressed && styles.dimmed]}>
+                <ThemedText style={LoginTypography.button}>Notifications</ThemedText>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
