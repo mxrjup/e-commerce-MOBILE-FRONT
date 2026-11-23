@@ -4,6 +4,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { type ApiCart, type CartLine, formatPrice, getLineTotalInclTax, normalizeCartItem } from '@/components/pages/cart/cart-logic';
+import { AddressForm } from '@/components/pages/profile/address-form';
 import { Choice } from '@/components/shared/forms/choice';
 import { SideMenu } from '@/components/shared/navigation/side-menu';
 import { ThemedText } from '@/components/shared/ui/themed-text';
@@ -12,33 +13,16 @@ import { ControlSize, LoginTypography, Radius, Spacing } from '@/constants/theme
 import { useApi } from '@/hooks/use-api';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
+import { getApiErrorMessage } from '@/services/api-client';
+import {
+  createAddress,
+  fetchAddresses,
+  type Address,
+  type AddressPayload,
+} from '@/services/user-profile-api';
+import { prepareCheckoutAddressPayload, selectCheckoutAddress } from '@/services/checkout-address';
 
 type DeliveryMode = 'STANDARD' | 'EXPRESS' | 'CLICK_AND_COLLECT' | 'RELAY_POINT';
-
-type CheckoutAddress = {
-  id: number;
-  label: string;
-  recipient: string;
-  street: string;
-  complement?: string;
-  zipCode: string;
-  city: string;
-  country: string;
-  isDefault: boolean;
-};
-
-type ApiAddress = {
-  id: number;
-  label?: string | null;
-  recipient?: string | null;
-  street?: string | null;
-  complement?: string | null;
-  zipCode?: string | null;
-  city?: string | null;
-  country?: string | null;
-  default?: boolean;
-  isDefault?: boolean;
-};
 
 const deliveryOptions: { value: DeliveryMode; label: string; description: string }[] = [
   { value: 'STANDARD', label: 'Livraison standard', description: '2 à 4 jours ouvrés' },
@@ -46,20 +30,6 @@ const deliveryOptions: { value: DeliveryMode; label: string; description: string
   { value: 'CLICK_AND_COLLECT', label: 'Retrait magasin', description: 'Disponible le lendemain' },
   { value: 'RELAY_POINT', label: 'Relais', description: 'Point de retrait' },
 ];
-
-function normalizeAddress(address: ApiAddress): CheckoutAddress {
-  return {
-    id: Number(address.id),
-    label: address.label?.trim() || 'Adresse',
-    recipient: address.recipient?.trim() || 'Destinataire',
-    street: address.street?.trim() || '',
-    complement: address.complement?.trim() || undefined,
-    zipCode: address.zipCode?.trim() || '',
-    city: address.city?.trim() || '',
-    country: address.country?.trim() || 'France',
-    isDefault: Boolean(address.isDefault ?? address.default),
-  };
-}
 
 function calculateShippingCost(mode: DeliveryMode, subtotalInclTax: number): number {
   switch (mode) {
@@ -81,11 +51,14 @@ export function CheckoutPage() {
   const api = useApi();
   const { user } = useAuth();
   const [items, setItems] = useState<CartLine[]>([]);
-  const [addresses, setAddresses] = useState<CheckoutAddress[]>([]);
+  const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
   const [selectedDelivery, setSelectedDelivery] = useState<DeliveryMode>('STANDARD');
   const [loading, setLoading] = useState(Boolean(user));
   const [submitting, setSubmitting] = useState(false);
+  const [addressEditorOpen, setAddressEditorOpen] = useState(false);
+  const [addressSubmitting, setAddressSubmitting] = useState(false);
+  const [addressError, setAddressError] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -94,18 +67,16 @@ export function CheckoutPage() {
     let active = true;
     Promise.all([
       api.get<ApiCart>('/api/cart'),
-      api.get<ApiAddress[]>('/api/v1/addresses'),
+      fetchAddresses(api),
     ])
-      .then(([cartData, addressData]) => {
+      .then(([cartData, nextAddresses]) => {
         if (!active) return;
 
         setItems((cartData?.items ?? []).map(normalizeCartItem));
-        const nextAddresses = (addressData ?? []).map(normalizeAddress);
         setAddresses(nextAddresses);
 
         if (nextAddresses.length > 0) {
-          const defaultAddress = nextAddresses.find((address) => address.isDefault) ?? nextAddresses[0];
-          setSelectedAddressId(defaultAddress.id);
+          setSelectedAddressId(selectCheckoutAddress(nextAddresses)?.id ?? null);
         } else {
           setSelectedAddressId(null);
         }
@@ -114,7 +85,7 @@ export function CheckoutPage() {
       })
       .catch((cause) => {
         if (!active) return;
-        setError(cause instanceof Error ? cause.message : 'Impossible de charger le checkout.');
+        setError(getApiErrorMessage(cause));
         setItems([]);
         setAddresses([]);
         setSelectedAddressId(null);
@@ -173,6 +144,23 @@ export function CheckoutPage() {
     }
   }
 
+  async function handleAddressSubmit(payload: AddressPayload): Promise<void> {
+    setAddressSubmitting(true);
+    setAddressError('');
+    try {
+      const created = await createAddress(api, prepareCheckoutAddressPayload(payload, addresses.length));
+      const refreshed = await fetchAddresses(api);
+      setAddresses(refreshed);
+      setSelectedAddressId(created.id);
+      setAddressEditorOpen(false);
+      setError('');
+    } catch (cause) {
+      setAddressError(getApiErrorMessage(cause));
+    } finally {
+      setAddressSubmitting(false);
+    }
+  }
+
   return <ThemedView style={styles.root}><SafeAreaView style={styles.root}>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <SideMenu />
@@ -195,30 +183,52 @@ export function CheckoutPage() {
         <>
           {error ? <View style={[styles.notice, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}><ThemedText style={LoginTypography.body}>{error}</ThemedText></View> : null}
 
-          <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}> 
+          <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
             <ThemedText accessibilityRole="header" style={LoginTypography.label} themeColor="textMuted">Adresse de livraison</ThemedText>
-            {addresses.length === 0 ? (
-              <View style={[styles.optionRow, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-                <ThemedText style={LoginTypography.body}>Aucune adresse disponible.</ThemedText>
-                <ThemedText themeColor="textSecondary" style={LoginTypography.body}>Ajoutez une adresse dans votre espace compte avant de commander.</ThemedText>
-              </View>
-            ) : addresses.map((address) => (
-              <Pressable
-                key={address.id}
-                accessibilityRole="button"
-                onPress={() => setSelectedAddressId(address.id)}
-                style={({ pressed }) => [styles.optionRow, { borderColor: selectedAddressId === address.id ? theme.accent : theme.border, backgroundColor: selectedAddressId === address.id ? theme.backgroundSelected : theme.background, opacity: pressed ? 0.8 : 1 }]}
-              >
-                <ThemedText style={LoginTypography.body}>{address.label}</ThemedText>
-                <ThemedText themeColor="textSecondary" style={LoginTypography.body}>{address.recipient}</ThemedText>
-                <ThemedText themeColor="textSecondary" style={LoginTypography.body}>{address.street}</ThemedText>
-                {!!address.complement && <ThemedText themeColor="textSecondary" style={LoginTypography.body}>{address.complement}</ThemedText>}
-                <ThemedText themeColor="textSecondary" style={LoginTypography.body}>{address.zipCode} {address.city}, {address.country}</ThemedText>
-              </Pressable>
-            ))}
+            {addressEditorOpen ? (
+              <AddressForm
+                submitting={addressSubmitting}
+                submitError={addressError}
+                onSubmit={handleAddressSubmit}
+                onCancel={() => {
+                  setAddressError('');
+                  setAddressEditorOpen(false);
+                }}
+              />
+            ) : (
+              <>
+                {addresses.length === 0 ? (
+                  <View style={[styles.optionRow, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+                    <ThemedText style={LoginTypography.body}>Aucune adresse disponible.</ThemedText>
+                    <ThemedText themeColor="textSecondary" style={LoginTypography.body}>Ajoutez une adresse pour pouvoir confirmer votre commande.</ThemedText>
+                  </View>
+                ) : addresses.map((address) => (
+                  <Pressable
+                    key={address.id}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: selectedAddressId === address.id }}
+                    onPress={() => setSelectedAddressId(address.id)}
+                    style={({ pressed }) => [styles.optionRow, { borderColor: selectedAddressId === address.id ? theme.accent : theme.border, backgroundColor: selectedAddressId === address.id ? theme.backgroundSelected : theme.background, opacity: pressed ? 0.8 : 1 }]}
+                  >
+                    <ThemedText style={LoginTypography.body}>{address.label}</ThemedText>
+                    <ThemedText themeColor="textSecondary" style={LoginTypography.body}>{address.recipient}</ThemedText>
+                    <ThemedText themeColor="textSecondary" style={LoginTypography.body}>{address.street}</ThemedText>
+                    {!!address.complement && <ThemedText themeColor="textSecondary" style={LoginTypography.body}>{address.complement}</ThemedText>}
+                    <ThemedText themeColor="textSecondary" style={LoginTypography.body}>{address.zipCode} {address.city}, {address.country}</ThemedText>
+                  </Pressable>
+                ))}
+                <Choice
+                  label={addresses.length === 0 ? 'Ajouter une adresse' : 'Ajouter une autre adresse'}
+                  onPress={() => {
+                    setAddressError('');
+                    setAddressEditorOpen(true);
+                  }}
+                />
+              </>
+            )}
           </View>
 
-          <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}> 
+          <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
             <ThemedText accessibilityRole="header" style={LoginTypography.label} themeColor="textMuted">Mode de livraison</ThemedText>
             {deliveryOptions.map((option) => (
               <Pressable
@@ -236,14 +246,14 @@ export function CheckoutPage() {
             ))}
           </View>
 
-          <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}> 
+          <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
             <ThemedText accessibilityRole="header" style={LoginTypography.label} themeColor="textMuted">Récapitulatif</ThemedText>
             {items.length === 0 ? (
               <ThemedText style={LoginTypography.body}>Votre panier est vide.</ThemedText>
             ) : (
               <>
                 {items.map((item) => (
-                  <View key={item.id} style={styles.summaryLine}> 
+                  <View key={item.id} style={styles.summaryLine}>
                     <View style={styles.summaryLineInfo}>
                       <ThemedText style={LoginTypography.body}>{item.name}</ThemedText>
                       <ThemedText themeColor="textSecondary" style={LoginTypography.body}>Qté : {item.quantity}</ThemedText>
@@ -273,11 +283,11 @@ export function CheckoutPage() {
           <View style={styles.footerActions}>
             <Pressable
               accessibilityRole="button"
-              disabled={submitting || items.length === 0 || selectedAddressId === null}
+              disabled={submitting || addressEditorOpen || items.length === 0 || selectedAddressId === null}
               onPress={() => void confirmOrder()}
-              style={({ pressed }) => [styles.primaryButton, { backgroundColor: submitting || items.length === 0 || selectedAddressId === null ? theme.border : theme.accent, opacity: pressed ? 0.9 : 1 }]}
+              style={({ pressed }) => [styles.primaryButton, { backgroundColor: submitting || addressEditorOpen || items.length === 0 || selectedAddressId === null ? theme.border : theme.accent, opacity: pressed ? 0.9 : 1 }]}
             >
-              <ThemedText themeColor={submitting || items.length === 0 || selectedAddressId === null ? 'text' : 'onAccent'} style={LoginTypography.button}>
+              <ThemedText themeColor={submitting || addressEditorOpen || items.length === 0 || selectedAddressId === null ? 'text' : 'onAccent'} style={LoginTypography.button}>
                 {submitting ? 'Validation…' : 'Confirmer la commande'}
               </ThemedText>
             </Pressable>
