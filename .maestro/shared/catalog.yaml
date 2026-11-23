@@ -1,0 +1,6 @@
+appId: com.logecommerce.mobile.e2e
+---
+- runFlow: start.yaml
+- tapOn: 'Explorer le catalogue.*'
+- assertVisible: Catalogue
+- assertVisible: Filtres

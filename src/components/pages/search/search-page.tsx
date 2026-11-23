@@ -21,7 +21,7 @@ export function SearchPage() {
         <Choice label="Retour" onPress={() => router.canGoBack() ? router.back() : router.replace('/catalog')} />
         <ThemedText accessibilityRole="header" style={LoginTypography.title}>Rechercher des produits</ThemedText>
         <ThemedText style={LoginTypography.label}>Nom du produit</ThemedText>
-        <TextInput value={search.query} onChangeText={search.change} onSubmitEditing={() => submit(search.query)}
+        <TextInput testID="product-search-input" value={search.query} onChangeText={search.change} onSubmitEditing={() => submit(search.query)}
           accessibilityLabel="Nom du produit" placeholder="Rechercher un produit…" placeholderTextColor={theme.textMuted}
           maxLength={150} returnKeyType="search" autoCorrect={false} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
           style={[styles.input, { color: theme.text, backgroundColor: theme.background, borderColor: focused ? theme.accent : theme.borderStrong }]} />

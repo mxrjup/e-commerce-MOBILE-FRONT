@@ -1,0 +1,38 @@
+appId: com.logecommerce.mobile.e2e
+name: Accueil, catalogue, variantes et navigation
+---
+- runFlow: shared/catalog.yaml
+- scrollUntilVisible:
+    element: { text: 'Voir Station d’accueil' }
+    direction: DOWN
+    timeout: 30000
+- tapOn: 'Voir Station d’accueil'
+- extendedWaitUntil:
+    visible: { id: product-title, text: 'Station d’accueil' }
+    timeout: 20000
+- scrollUntilVisible:
+    element: { id: product-price }
+    direction: DOWN
+- assertVisible: { id: product-price, text: '106,80 € TTC' }
+- assertVisible: { id: product-availability, text: Disponible }
+- scrollUntilVisible:
+    element: { text: E2E-STATION-PLUS }
+    direction: DOWN
+- tapOn: E2E-STATION-PLUS
+- scrollUntilVisible:
+    element: { id: product-price }
+    direction: UP
+- assertVisible: { id: product-price, text: '118,80 € TTC' }
+- scrollUntilVisible:
+    element: { text: Retour au catalogue }
+    direction: UP
+- tapOn: Retour au catalogue
+- assertVisible: Catalogue
+- tapOn: Ouvrir le menu
+- tapOn: Panier
+- extendedWaitUntil:
+    visible: Votre panier est vide.
+    timeout: 20000
+- tapOn: Ouvrir le menu
+- tapOn: Accueil
+- assertVisible: 'Explorer le catalogue.*'

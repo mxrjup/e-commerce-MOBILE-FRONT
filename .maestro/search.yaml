@@ -1,0 +1,31 @@
+appId: com.logecommerce.mobile.e2e
+name: Autocomplétion, résultats, fiche et recherche vide
+---
+- runFlow: shared/catalog.yaml
+- tapOn: Rechercher des produits
+- tapOn: { id: product-search-input }
+- inputText: Station
+- extendedWaitUntil:
+    visible: 'Rechercher Station d’accueil'
+    timeout: 20000
+- hideKeyboard
+- tapOn: Rechercher
+- extendedWaitUntil:
+    visible: 'Voir Station d’accueil'
+    timeout: 20000
+- tapOn: 'Voir Station d’accueil'
+- extendedWaitUntil:
+    visible: { id: product-title, text: 'Station d’accueil' }
+    timeout: 20000
+- tapOn: Retour au catalogue
+- tapOn: Rechercher des produits
+- tapOn: { id: product-search-input }
+- eraseText
+- inputText: zzze2eabsent
+- hideKeyboard
+- tapOn: Rechercher
+- extendedWaitUntil:
+    visible: Aucun produit trouvé. Essayez un autre nom.
+    timeout: 20000
+- tapOn: Retour
+- assertVisible: Catalogue

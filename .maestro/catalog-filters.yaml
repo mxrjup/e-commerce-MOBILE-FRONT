@@ -1,0 +1,54 @@
+appId: com.logecommerce.mobile.e2e
+name: Filtres combinés et réinitialisation
+---
+- runFlow: shared/catalog.yaml
+- scrollUntilVisible:
+    element: { id: catalog-result-count }
+    direction: DOWN
+    timeout: 30000
+- assertVisible: { id: catalog-result-count, text: 4 articles }
+- scrollUntilVisible:
+    element: { id: filter-categories }
+    direction: UP
+- tapOn: { id: filter-categories }
+- tapOn: 'Catégories : E2E Accessoires'
+- tapOn: { id: filter-categories }
+- scrollUntilVisible:
+    element: { id: catalog-result-count }
+    direction: DOWN
+- assertVisible: { id: catalog-result-count, text: 3 articles }
+- scrollUntilVisible:
+    element: { id: filter-brands }
+    direction: UP
+- tapOn: { id: filter-brands }
+- tapOn: 'Marques : E2E Alpha'
+- tapOn: { id: filter-brands }
+- scrollUntilVisible:
+    element: { id: catalog-result-count }
+    direction: DOWN
+- assertVisible: { id: catalog-result-count, text: 2 articles }
+- scrollUntilVisible:
+    element: { id: filter-universes }
+    direction: UP
+- tapOn: { id: filter-universes }
+- scrollUntilVisible:
+    element: { text: 'Univers : E2E Bureau' }
+    direction: DOWN
+- tapOn: 'Univers : E2E Bureau'
+- tapOn: { id: filter-universes }
+- scrollUntilVisible:
+    element: { id: catalog-result-count }
+    direction: DOWN
+- assertVisible: { id: catalog-result-count, text: 1 article }
+- scrollUntilVisible:
+    element: { text: 'Voir Station d’accueil' }
+    direction: DOWN
+- assertVisible: 'Voir Station d’accueil'
+- scrollUntilVisible:
+    element: { text: Réinitialiser les filtres }
+    direction: UP
+- tapOn: Réinitialiser les filtres
+- scrollUntilVisible:
+    element: { id: catalog-result-count }
+    direction: DOWN
+- assertVisible: { id: catalog-result-count, text: 4 articles }

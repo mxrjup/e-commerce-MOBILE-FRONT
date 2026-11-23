@@ -41,7 +41,10 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "node --experimental-strip-types --test tests/*.test.mjs"
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "test:e2e": "node scripts/e2e/run.mjs",
+    "e2e:build": "node scripts/e2e/build.mjs",
+    "e2e:backend": "node scripts/e2e/backend.mjs"
   },
   "private": true
 }

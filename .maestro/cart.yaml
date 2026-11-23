@@ -1,0 +1,36 @@
+appId: com.logecommerce.mobile.e2e
+name: Panier invité - ajout, quantités, suppression
+---
+- runFlow: shared/start.yaml
+- tapOn: Ouvrir le menu
+- tapOn: Panier
+- extendedWaitUntil:
+    visible: Votre panier est vide.
+    timeout: 20000
+# The fixture preflight verifies the real variant 101 used by this existing UI.
+- scrollUntilVisible:
+    element: { text: 'Ajouter Station d’accueil' }
+    direction: DOWN
+- tapOn: 'Ajouter Station d’accueil'
+- scrollUntilVisible:
+    element: { id: cart-subtotal }
+    direction: UP
+    timeout: 20000
+- assertVisible: { id: cart-subtotal, text: '89,00 €' }
+- assertVisible: { id: 'cart-quantity-.*', text: '1' }
+- tapOn: 'Ajouter 1 Station d’accueil'
+# Strict assertion: currently exposes missing X-Session-Token in the app.
+- extendedWaitUntil:
+    visible: { id: cart-subtotal, text: '178,00 €' }
+    timeout: 20000
+- assertVisible: { id: 'cart-quantity-.*', text: '2' }
+- tapOn: 'Retirer 1 Station d’accueil'
+- extendedWaitUntil:
+    visible: { id: cart-subtotal, text: '89,00 €' }
+    timeout: 20000
+- assertVisible: { id: 'cart-quantity-.*', text: '1' }
+- tapOn: 'Supprimer Station d’accueil'
+- extendedWaitUntil:
+    visible: Votre panier est vide.
+    timeout: 20000
+- assertNotVisible: { id: cart-subtotal }

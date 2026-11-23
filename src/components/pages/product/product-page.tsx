@@ -20,14 +20,14 @@ function ProductContent({ product }: { product: ProductDetail }) {
   const description = descriptionText(product.description);
   return <>
     <ThemedText themeColor="textSecondary">{product.brand.name} · {product.category.name}</ThemedText>
-    <ThemedText accessibilityRole="header" style={styles.title}>{product.title}</ThemedText>
+    <ThemedText testID="product-title" accessibilityRole="header" style={styles.title}>{product.title}</ThemedText>
     <ProductGallery key={variant?.id ?? 'empty'} images={productImages(variant)} title={product.title} />
     {variant && <>
       <View accessibilityLiveRegion="polite" style={styles.group}>
-        <ThemedText style={styles.price}>{formatPrice(variant.priceInclTax)} TTC</ThemedText>
+        <ThemedText testID="product-price" style={styles.price}>{formatPrice(variant.priceInclTax)} TTC</ThemedText>
         {promotion(variant) && <ThemedText accessibilityLabel={`Ancien prix : ${formatPrice(variant.regularPriceInclTax!)} TTC`} style={styles.oldPrice}>{formatPrice(variant.regularPriceInclTax!)} TTC</ThemedText>}
         {variant.ecoTaxInclTax !== null && <ThemedText themeColor="textSecondary">Dont {formatPrice(variant.ecoTaxInclTax)} d’éco-participation</ThemedText>}
-        <ThemedText>{availability(variant)}</ThemedText>
+        <ThemedText testID="product-availability">{availability(variant)}</ThemedText>
         <ThemedText themeColor="textSecondary">Référence : {variant.sku}</ThemedText>
       </View>
       {product.attributes.map((attribute, index) => <View key={attribute.name} style={styles.group}>

@@ -66,7 +66,7 @@ function ProductResults({ filters }: { filters: ProductFilters }) {
     {!current && <View accessibilityLiveRegion="polite"><ActivityIndicator color={theme.accent} /><ThemedText>Chargement des articles…</ThemedText></View>}
     {current?.error && <><ThemedText accessibilityRole="alert">{current.error}</ThemedText><Choice label="Réessayer les articles" onPress={() => setAttempt(n => n + 1)} /></>}
     {data && <>
-      <ThemedText accessibilityLiveRegion="polite">{data.totalElements} article{data.totalElements !== 1 ? 's' : ''}</ThemedText>
+      <ThemedText testID="catalog-result-count" accessibilityLiveRegion="polite">{data.totalElements} article{data.totalElements !== 1 ? 's' : ''}</ThemedText>
       {!data.content.length && <ThemedText>Aucun article ne correspond à cette sélection.</ThemedText>}
       {data.content.map(product => <ProductLink key={product.id} product={product} />)}
     </>}

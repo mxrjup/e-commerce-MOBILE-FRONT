@@ -4,8 +4,8 @@ import { ThemedText } from '@/components/shared/ui/themed-text';
 import { ControlSize, LoginTypography, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-export function Accordion({ title, children, count = 0, summary, defaultExpanded = false }: {
-  title: string; children: ReactNode; count?: number; summary?: string; defaultExpanded?: boolean;
+export function Accordion({ title, children, count = 0, summary, defaultExpanded = false, testID }: {
+  title: string; children: ReactNode; count?: number; summary?: string; defaultExpanded?: boolean; testID?: string;
 }) {
   const theme = useTheme();
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -13,7 +13,7 @@ export function Accordion({ title, children, count = 0, summary, defaultExpanded
   const label = [title, count > 0 ? `${count} sélectionné${count > 1 ? 's' : ''}` : '', summary].filter(Boolean).join(', ');
 
   return <View style={styles.section}>
-    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ expanded }} aria-expanded={expanded}
+    <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ expanded }} aria-expanded={expanded}
       onPress={() => setExpanded(value => !value)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
       style={({ pressed }) => [styles.header, {
         borderColor: focused ? theme.accent : theme.border,

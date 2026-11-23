@@ -1,0 +1,65 @@
+name: mobile-e2e
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: e2e
+      POSTGRES_PASSWORD: isolated-e2e-only
+    volumes:
+      - data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U e2e]
+      interval: 2s
+      timeout: 3s
+      retries: 60
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: [start-dev, --import-realm]
+    environment:
+      KC_HTTP_ENABLED: 'true'
+      KC_HOSTNAME: http://10.0.2.2:18180
+    ports: ['127.0.0.1:18180:8080']
+    volumes:
+      - ./realm.json:/opt/keycloak/data/import/realm.json:ro
+  catalog:
+    build:
+      context: ../../.e2e/backend
+      args: { MODULE: catalog-service, SERVER_PORT: 8081 }
+    environment:
+      SERVER_PORT: 8081
+      DB_HOST: postgres
+      DB_NAME: ecommerce_catalog
+      SPRING_DATASOURCE_USERNAME: e2e
+      SPRING_DATASOURCE_PASSWORD: isolated-e2e-only
+    depends_on:
+      postgres: { condition: service_healthy }
+  cart:
+    build:
+      context: ../../.e2e/backend
+      args: { MODULE: cart-service, SERVER_PORT: 8083 }
+    environment:
+      SERVER_PORT: 8083
+      DB_HOST: postgres
+      DB_NAME: ecommerce_cart
+      SPRING_DATASOURCE_USERNAME: e2e
+      SPRING_DATASOURCE_PASSWORD: isolated-e2e-only
+      CATALOG_SERVICE_URL: http://catalog:8081
+      # These UI flows never publish order.paid; no event consumer is needed.
+      SPRING_KAFKA_LISTENER_AUTO_STARTUP: 'false'
+    depends_on:
+      postgres: { condition: service_healthy }
+  gateway:
+    build:
+      context: ../../.e2e/backend
+      args: { MODULE: api-gateway, SERVER_PORT: 8080 }
+    environment:
+      SERVER_PORT: 8080
+      CATALOG_SERVICE_URI: http://catalog:8081
+      CART_SERVICE_URI: http://cart:8083
+      KEYCLOAK_ISSUER_URI: http://10.0.2.2:18180/realms/ecommerce
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/ecommerce/protocol/openid-connect/certs
+    ports: ['127.0.0.1:18080:8080']
+    depends_on: [catalog, cart, keycloak]
+volumes:
+  data:

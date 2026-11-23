@@ -1,0 +1,5 @@
+flows:
+  - home-product.yaml
+  - catalog-filters.yaml
+  - search.yaml
+  - cart.yaml
