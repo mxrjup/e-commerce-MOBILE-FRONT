@@ -1,8 +1,0 @@
-appId: com.logecommerce.mobile.e2e
----
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible: 'Explorer le catalogue.*'
-    timeout: 30000
-- assertVisible: 'Votre prochain coup de cœur technologique.'

@@ -50,7 +50,7 @@ export async function backend(action) {
     await waitFor('Keycloak', async () => {
       const response = await fetch('http://127.0.0.1:18180/realms/ecommerce/.well-known/openid-configuration', { signal: AbortSignal.timeout(5000) });
       assert.equal(response.status, 200);
-      assert.equal((await response.json()).issuer, 'http://10.0.2.2:18180/realms/ecommerce');
+      assert.equal((await response.json()).issuer, 'http://localhost:18180/realms/ecommerce');
     });
     await reset();
   } else if (action === 'reset') await reset();

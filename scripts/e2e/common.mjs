@@ -4,7 +4,6 @@ import { resolve } from 'node:path';
 
 export const root = fileURLToPath(new URL('../../', import.meta.url));
 export const artifacts = resolve(root, 'artifacts/e2e');
-export const appId = 'com.logecommerce.mobile.e2e';
 export function run(command, args = [], options = {}) {
   const result = spawnSync(command, args, { cwd: root, encoding: 'utf8', stdio: 'inherit', ...options });
   if (result.error) throw new Error(`${command}: ${result.error.message}`);

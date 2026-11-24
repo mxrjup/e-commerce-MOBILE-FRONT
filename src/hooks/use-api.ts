@@ -7,7 +7,10 @@ import { createApiClient } from '@/services/api-client';
 const baseUrl = process.env.EXPO_PUBLIC_API_URL ||
   (Platform.OS === 'android' ? 'http://10.0.2.2:8080' : 'http://localhost:8080');
 
+// Keep the guest cart across screen mounts, without persisting a bearer token.
+const guestCartSession: { token: string | null } = { token: null };
+
 export function useApi() {
   const { getAccessToken } = useAuth();
-  return useMemo(() => createApiClient(baseUrl, getAccessToken), [getAccessToken]);
+  return useMemo(() => createApiClient(baseUrl, getAccessToken, guestCartSession), [getAccessToken]);
 }

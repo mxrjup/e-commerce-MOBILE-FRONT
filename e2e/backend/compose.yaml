@@ -18,7 +18,7 @@ services:
     command: [start-dev, --import-realm]
     environment:
       KC_HTTP_ENABLED: 'true'
-      KC_HOSTNAME: http://10.0.2.2:18180
+      KC_HOSTNAME: http://localhost:18180
     ports: ['127.0.0.1:18180:8080']
     volumes:
       - ./realm.json:/opt/keycloak/data/import/realm.json:ro
@@ -57,7 +57,8 @@ services:
       SERVER_PORT: 8080
       CATALOG_SERVICE_URI: http://catalog:8081
       CART_SERVICE_URI: http://cart:8083
-      KEYCLOAK_ISSUER_URI: http://10.0.2.2:18180/realms/ecommerce
+      CORS_ALLOWED_ORIGINS: http://localhost:8081
+      KEYCLOAK_ISSUER_URI: http://localhost:18180/realms/ecommerce
       KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/ecommerce/protocol/openid-connect/certs
     ports: ['127.0.0.1:18080:8080']
     depends_on: [catalog, cart, keycloak]
