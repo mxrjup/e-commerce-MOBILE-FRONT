@@ -60,9 +60,7 @@ export function createApiClient(baseUrl: string, getAccessToken: () => Promise<s
     }
 
     const headers = new Headers(options.headers);
-    const guestCart = options.auth === false && (url.pathname === '/api/cart' || url.pathname.startsWith('/api/cart/'));
     headers.delete('X-Session-Token');
-    if (guestCart && cartSession.token) headers.set('X-Session-Token', cartSession.token);
     headers.set('Accept', 'application/json');
 
     if (isCartPath(url.pathname) || url.pathname === '/api/orders/checkout') {
@@ -125,10 +123,6 @@ export function createApiClient(baseUrl: string, getAccessToken: () => Promise<s
     }
     if (!response.ok) {
       throw new ApiError('http_error', `La requête a échoué (${response.status}).`, response.status, data);
-    }
-    if (guestCart) {
-      const token = response.headers.get('X-Session-Token');
-      if (token?.trim()) cartSession.token = token;
     }
     return data as T;
   }
