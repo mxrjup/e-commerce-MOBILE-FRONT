@@ -58,7 +58,7 @@ export function OrderDetailPage() {
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <SideMenu />
       <View style={styles.headerRow}>
-        <Pressable accessibilityRole="button" onPress={() => router.canGoBack() ? router.back() : router.replace('/orders')} style={styles.backButton}>
+        <Pressable accessibilityRole="button" onPress={() => router.canGoBack() ? router.back() : router.replace('/orders')} style={[styles.backButton, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
           <ThemedText style={LoginTypography.button}>← Retour</ThemedText>
         </Pressable>
       </View>

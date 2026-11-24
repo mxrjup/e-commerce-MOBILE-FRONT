@@ -44,10 +44,14 @@ export function getApiErrorMessage(cause: unknown, timedOut = false): string {
   return 'Impossible de charger les données pour le moment.';
 }
 
-export type GuestCartSession = { token: string | null };
+type CartSessionStorage = { read: () => Promise<string | null>; write: (token: string | null) => Promise<void> };
 
-export function createApiClient(baseUrl: string, getAccessToken: () => Promise<string | null>, cartSession: GuestCartSession = { token: null }) {
+export function createApiClient(baseUrl: string, getAccessToken: () => Promise<string | null>, cartStorage?: CartSessionStorage) {
   const base = new URL(baseUrl);
+
+  function isCartPath(path: string): boolean {
+    return path === '/api/cart' || path.startsWith('/api/cart/');
+  }
 
   async function request<T = unknown>(path: string, options: RequestOptions = {}): Promise<T> {
     const url = new URL(path, base);
@@ -60,6 +64,14 @@ export function createApiClient(baseUrl: string, getAccessToken: () => Promise<s
     headers.delete('X-Session-Token');
     if (guestCart && cartSession.token) headers.set('X-Session-Token', cartSession.token);
     headers.set('Accept', 'application/json');
+
+    if (isCartPath(url.pathname) || url.pathname === '/api/orders/checkout') {
+      const sessionToken = await cartStorage?.read();
+      if (sessionToken) {
+        headers.set('X-Session-Token', sessionToken);
+      }
+    }
+
     // Authentication is owned by this client, never by individual callers.
     headers.delete('Authorization');
     if (options.auth !== false) {
@@ -88,6 +100,15 @@ export function createApiClient(baseUrl: string, getAccessToken: () => Promise<s
         redirect: 'error',
       });
       text = await response.text();
+
+      if (response.ok && isCartPath(url.pathname)) {
+        const sessionToken = response.headers.get('X-Session-Token');
+        if (url.pathname === '/api/cart/merge') {
+          await cartStorage?.write(null);
+        } else if (sessionToken) {
+          await cartStorage?.write(sessionToken);
+        }
+      }
     } catch (cause) {
       if (cause instanceof Error && (cause.name === 'AbortError' || cause.name === 'TimeoutError')) throw cause;
       throw new ApiError('network_error', 'Impossible de joindre le serveur. Vérifiez votre connexion.');
