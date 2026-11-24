@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { type ApiCart, type CartLine, formatPrice, getLineTotalInclTax, normalizeCartItem } from '@/components/pages/cart/cart-logic';
@@ -21,6 +22,7 @@ import {
   type AddressPayload,
 } from '@/services/user-profile-api';
 import { prepareCheckoutAddressPayload, selectCheckoutAddress } from '@/services/checkout-address';
+import { checkoutFailureMessage, isSafeStripeCheckoutUrl } from '@/services/checkout-payment';
 
 type DeliveryMode = 'STANDARD' | 'EXPRESS' | 'CLICK_AND_COLLECT' | 'RELAY_POINT';
 
@@ -130,15 +132,18 @@ export function CheckoutPage() {
         items: items.map((item) => ({ variantId: item.variantId || item.id, quantity: item.quantity })),
       });
 
-      if (response?.stripeCheckoutUrl) {
-        const canOpen = await Linking.canOpenURL(response.stripeCheckoutUrl);
-        if (!canOpen) {
-          throw new Error('Impossible d’ouvrir la page de paiement Stripe.');
-        }
-        await Linking.openURL(response.stripeCheckoutUrl);
+      if (isSafeStripeCheckoutUrl(response?.stripeCheckoutUrl)) {
+        await WebBrowser.openBrowserAsync(response.stripeCheckoutUrl, {
+          dismissButtonStyle: 'cancel',
+          showInRecents: true,
+        });
+      } else {
+        throw new Error('Le lien de paiement Stripe est invalide ou indisponible.');
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Impossible de confirmer votre commande.');
+      const message = checkoutFailureMessage(cause);
+      setError(message);
+      router.navigate({ pathname: '/checkout-failure', params: { reason: message } });
     } finally {
       setSubmitting(false);
     }
