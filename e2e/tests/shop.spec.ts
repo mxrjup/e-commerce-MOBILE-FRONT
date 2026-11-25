@@ -67,15 +67,16 @@ test('Recherche, autocomplétion, fiche et aucun résultat', async ({ page }) =>
 test('Panier : ajouter, augmenter, diminuer et supprimer', async ({ page }) => {
   await page.goto('/cart');
   await expect(page.getByText('Votre panier est vide.', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Ajouter Station d’accueil', exact: true }).click();
-  await expect(page.getByTestId('cart-subtotal')).toHaveText('89,00 €');
+  await page.getByRole('button', { name: 'Ajouter E2E Sac', exact: true }).click();
+  await expect(page.getByTestId('cart-subtotal')).toHaveText('46,80 €');
   await expect(page.getByTestId(/^cart-quantity-/)).toHaveText('1');
-  await page.getByRole('button', { name: 'Ajouter 1 Station d’accueil', exact: true }).click();
-  await expect(page.getByTestId('cart-subtotal')).toHaveText('178,00 €');
+  await page.getByRole('button', { name: 'Ajouter 1 E2E Sac', exact: true }).click();
+  await expect(page.getByTestId('cart-subtotal')).toHaveText('93,60 €');
   await expect(page.getByTestId(/^cart-quantity-/)).toHaveText('2');
-  await page.getByRole('button', { name: 'Retirer 1 Station d’accueil', exact: true }).click();
-  await expect(page.getByTestId('cart-subtotal')).toHaveText('89,00 €');
-  await page.getByRole('button', { name: 'Supprimer Station d’accueil', exact: true }).click();
+  await page.getByRole('button', { name: 'Retirer 1 E2E Sac', exact: true }).click();
+  await expect(page.getByTestId('cart-subtotal')).toHaveText('46,80 €');
+  await expect(page.getByTestId(/^cart-quantity-/)).toHaveText('1');
+  await page.getByRole('button', { name: 'Supprimer E2E Sac', exact: true }).click();
   await expect(page.getByText('Votre panier est vide.', { exact: true })).toBeVisible();
   await expect(page.getByTestId('cart-subtotal')).toHaveCount(0);
 });
