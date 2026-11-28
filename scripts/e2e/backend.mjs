@@ -2,14 +2,8 @@ import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
-import { root, artifacts, run, compose, json, waitFor } from './common.mjs';
+import { root, artifacts, compose, json, waitFor } from './common.mjs';
 
-const revision = readFileSync(resolve(root, 'e2e/backend/revision.txt'), 'utf8').trim();
-const checkout = resolve(root, '.e2e/backend');
-function checkCheckout() {
-  assert.equal(run('git', ['rev-parse', 'HEAD'], { cwd: checkout, stdio: 'pipe' }), revision, 'Wrong backend revision');
-  assert.equal(run('git', ['status', '--porcelain', '--untracked-files=no'], { cwd: checkout, stdio: 'pipe' }), '', 'Backend tracked files must be clean');
-}
 export async function verifyFixtures() {
   const product = await json('/api/catalog/products/e2e-station');
   assert.equal(product.title, 'Station d’accueil');
@@ -27,6 +21,8 @@ export async function verifyFixtures() {
   assert.equal((await json('/api/catalog/products/autocomplete?q=Station')).length, 1);
   const cart = await json('/api/cart');
   assert.deepEqual(cart.items, [], 'Preflight cart must be empty');
+  const reviews = await json('/api/catalog/products/e2e-station/reviews');
+  assert.equal(reviews.totalReviews, 0, 'Preflight reviews must be empty');
 }
 export async function reset() {
   // No host/database URL override: writes can only reach this compose project.
@@ -38,13 +34,13 @@ export async function reset() {
 }
 export async function backend(action) {
   if (action === 'up') {
-    if (!existsSync(checkout)) {
-      mkdirSync(resolve(root, '.e2e'), { recursive: true });
-      run('git', ['clone', 'https://github.com/mxrjup/e-commerce-BACK.git', checkout]);
-      run('git', ['checkout', '--detach', revision], { cwd: checkout });
-    }
-    checkCheckout();
+    const context = resolve(root, 'e2e/backend', process.env.E2E_BACKEND_CONTEXT || '../../../backend');
+    assert.ok(existsSync(resolve(context, 'Dockerfile')), `Expected a backend Dockerfile in ${context}`);
+    // Keycloak imports the fixture realm at first startup.
+    compose(['up', '-d', '--force-recreate', 'keycloak']);
     compose(['up', '-d', '--build']);
+    // Clear cached service addresses after Compose replaces backend containers.
+    compose(['restart', 'gateway']);
     await waitFor('Gateway/catalog', () => json('/api/catalog/products'));
     await waitFor('Cart', () => json('/api/cart'));
     await waitFor('Keycloak', async () => {

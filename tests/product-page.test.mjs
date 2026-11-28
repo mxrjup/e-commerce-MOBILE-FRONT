@@ -33,6 +33,7 @@ function screen(state, params = { id: 'test-slug' }, target) {
   };
   function load(path) {
     if (path.endsWith('/use-api') || path.endsWith('\\use-api')) return { useApi: () => null };
+    if (path.endsWith('/use-auth') || path.endsWith('\\use-auth')) return { useAuth: () => ({ ready: true, user: null }) };
     if (path.endsWith('/use-product') || path.endsWith('\\use-product')) return { useProduct: slug => {
       actions.push(['load', slug]);
       return { ...state, retry: () => actions.push(['retry']) };
@@ -85,13 +86,13 @@ test('catalogue and existing cart controls use Expo Router destinations', () => 
   assert.deepEqual(result.navigation, [['replace', '/catalog'], ['push', '/cart']]);
 });
 
-test('successful product renders backend content, promotion and all empty sections', () => {
+test('successful product renders backend content and starts loading public reviews', () => {
   const result = screen({ data: {
-    id: 1, title: 'Produit de test', brand: { name: 'Marque' }, category: { name: 'Catégorie' }, description: '<p>Description sûre</p><script>alert(1)</script>',
+    id: 1, slug: 'test-slug', title: 'Produit de test', brand: { name: 'Marque' }, category: { name: 'Catégorie' }, description: '<p>Description sûre</p><script>alert(1)</script>',
     variants: [{ id: 9, sku: 'SKU-9', values: { Couleur: 'Noir' }, priceInclTax: 100, regularPriceInclTax: 120, ecoTaxInclTax: null, available: true, lowStock: true, images: [] }],
     attributes: [{ name: 'Couleur', values: ['Noir'] }], specifications: [{ key: 'Poids', value: '100 g' }],
   } });
-  for (const text of ['Produit de test', 'Marque', 'Catégorie', 'Description sûre', '100,00', '120,00', 'Stock faible', 'SKU-9', 'Poids', '100 g', 'Aucune image disponible', 'Les avis clients ne sont pas encore disponibles', 'Les accessoires associés ne sont pas encore disponibles']) assert.ok(result.html.includes(text), text);
+  for (const text of ['Produit de test', 'Marque', 'Catégorie', 'Description sûre', '100,00', '120,00', 'Stock faible', 'SKU-9', 'Poids', '100 g', 'Aucune image disponible', 'Chargement des avis', 'Connectez-vous pour donner votre avis', 'Les accessoires associés ne sont pas encore disponibles']) assert.ok(result.html.includes(text), text);
   assert.doesNotMatch(result.html, /alert\(1\)|<script/);
 });
 

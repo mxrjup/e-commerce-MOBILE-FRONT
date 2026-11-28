@@ -80,3 +80,42 @@ test('Panier : ajouter, augmenter, diminuer et supprimer', async ({ page }) => {
   await expect(page.getByText('Votre panier est vide.', { exact: true })).toBeVisible();
   await expect(page.getByTestId('cart-subtotal')).toHaveCount(0);
 });
+
+test('Avis : publier une note et retrouver son commentaire sur la fiche', async ({ page, browser }) => {
+  const comment = 'La station fonctionne très bien.';
+  const reviewsUrl = '/api/catalog/products/e2e-station/reviews';
+  await page.goto('/product/e2e-station');
+  await expect(page.getByText('Aucun avis pour ce produit.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Connectez-vous pour donner votre avis.', { exact: true })).toBeVisible();
+
+  await page.goto('/login');
+  const [login] = await Promise.all([
+    page.waitForEvent('popup'),
+    page.getByRole('button', { name: 'Continuer avec un e-mail' }).click(),
+  ]);
+  await login.locator('#username').fill('reviewer');
+  await login.locator('#password').fill('isolated-e2e-reviewer');
+  await login.locator('#kc-login').click();
+  await expect(page).toHaveURL(/\/home$/);
+  await page.getByRole('button', { name: /Explorer le catalogue/ }).click();
+  await page.getByRole('button', { name: 'Voir Station d’accueil', exact: true }).click();
+  await page.getByRole('button', { name: '4 étoiles sur 5' }).click();
+  await page.getByRole('textbox', { name: 'Commentaire' }).fill(comment);
+  const [submission] = await Promise.all([
+    page.waitForResponse(response => response.url().endsWith(reviewsUrl) && response.request().method() === 'POST'),
+    page.getByRole('button', { name: 'Enregistrer mon avis' }).click(),
+  ]);
+  expect(submission.status()).toBe(200);
+  await expect(page.getByText('Votre avis a été enregistré.', { exact: true })).toBeVisible();
+
+  const visitor = await browser.newPage({ baseURL: new URL(page.url()).origin });
+  try {
+    await visitor.goto('/product/e2e-station');
+    await expect(visitor.getByText('Connectez-vous pour donner votre avis.', { exact: true })).toBeVisible();
+    await expect(visitor.getByText(comment, { exact: true })).toBeVisible();
+    await expect(visitor.getByText('4 / 5', { exact: true })).toBeVisible();
+    await expect(visitor.getByText('1 avis', { exact: true })).toBeVisible();
+  } finally {
+    await visitor.close();
+  }
+});

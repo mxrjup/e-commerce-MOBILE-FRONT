@@ -45,7 +45,6 @@ export function descriptionText(html: string | null) {
     }).replace(/[ \t]+/g, ' ').replace(/\n\s*\n\s*\n/g, '\n\n').trim();
 }
 
-export const unavailableReviews = 'Les avis clients ne sont pas encore disponibles.';
 export const unavailableAccessories = 'Les accessoires associés ne sont pas encore disponibles.';
 
 export function clampZoom(scale: number) { return Math.min(4, Math.max(1, scale)); }
