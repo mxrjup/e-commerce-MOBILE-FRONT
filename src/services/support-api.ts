@@ -1,4 +1,4 @@
-import { ApiError, getApiErrorMessage } from '@/services/api-client';
+import { ApiError, getApiErrorMessage } from './api-client.ts';
 
 export type TicketCategory =
   | 'ORDER'
