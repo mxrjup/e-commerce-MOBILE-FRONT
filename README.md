@@ -117,6 +117,28 @@ locale ayant importé les comptes de démonstration, utiliser :
 | `admin.demo@ecommerce.test` | `demo1234` |
 
 
+## APK de test (sans quota Expo)
+
+Le workflow **Build Android APK** construit l'APK du profil `preview` sur le
+runner GitHub (`eas build --local`), pas sur les serveurs d'Expo : il ne
+consomme pas le quota de builds du plan gratuit. Il se lance :
+
+- à chaque tag `vX.Y.Z` (l'APK de la release) ;
+- à la main : *Actions* → *Build Android APK* → *Run workflow*, sur la branche
+  voulue ;
+- sur une Pull Request qui touche le workflow, `app.json`, `eas.json` ou les
+  dépendances, pour vérifier que le build passe encore.
+
+Il ne se lance plus à chaque push sur `dev`. L'APK est dans les *Artifacts* du
+run (30 jours). La clé de signature reste celle stockée chez Expo, lue avec le
+secret `EXPO_TOKEN` du dépôt.
+
+Même build sur un poste, avec Android Studio, le SDK et un JDK 17 :
+
+```bash
+npx eas-cli build --local --platform android --profile preview --output app.apk
+```
+
 ## Dépannage
 
 - **Le navigateur affiche `localhost:8180` sans accéder à Keycloak :** vérifier
