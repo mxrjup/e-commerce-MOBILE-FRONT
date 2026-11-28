@@ -21,8 +21,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: mxrjup/e-commerce-BACK
-          # Backend with the C08 endpoints and Flyway V6 (PR #164).
-          ref: bd52e5b277d11a3be905e51accc58f71eb1d7662
+          # Backend dev with the C08 endpoints and Flyway V6 (squash of PR #164).
+          ref: 83ba76835c2bca7f6d05b48c288da70a2ca73986
           path: .e2e/backend
           persist-credentials: false
       - uses: actions/setup-node@v4
