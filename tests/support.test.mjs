@@ -1,14 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createApiClient } from '../src/services/api-client.ts';
+import { ApiError, createApiClient } from '../src/services/api-client.ts';
 import {
   addSupportTicketMessage,
   createSupportTicket,
   fetchMySupportTickets,
   fetchSupportTicketDetail,
+  getSupportApiErrorMessage,
   getTicketCategoryLabel,
   getTicketStatusLabel,
+  isOrderEligibleForSupport,
+  isOrderRequiredCategory,
   isTicketActiveStatus,
   mapTicketDetailResponse,
   mapTicketSummaryListResponse,
@@ -84,11 +87,18 @@ test('mapTicketDetailResponse orders discussion messages chronologically', () =>
   assert.equal(detail.messages[1].authorRole, 'AGENT');
 });
 
-test('ticket validators and labels enforce required fields and bounds', () => {
+test('ticket validators and labels enforce required fields, order requirement, and 14-day window', () => {
   assert.equal(getTicketCategoryLabel('RETURN_REFUND'), 'Retour & remboursement');
   assert.equal(getTicketStatusLabel('WAITING_CUSTOMER'), 'Réponse attendue');
   assert.equal(parsePositiveTicketId('42'), 42);
   assert.equal(parsePositiveTicketId('abc'), null);
+
+  assert.equal(isOrderRequiredCategory('ORDER'), true);
+  assert.equal(isOrderRequiredCategory('DELIVERY'), true);
+  assert.equal(isOrderRequiredCategory('RETURN_REFUND'), true);
+  assert.equal(isOrderRequiredCategory('PRODUCT'), false);
+  assert.equal(isOrderRequiredCategory('ACCOUNT'), false);
+  assert.equal(isOrderRequiredCategory('OTHER'), false);
 
   const invalid = validateCreateTicketInput({
     subject: '   ',
@@ -97,14 +107,66 @@ test('ticket validators and labels enforce required fields and bounds', () => {
   });
   assert.ok(invalid.subject);
   assert.ok(invalid.message);
+  assert.ok(invalid.order);
+  assert.ok(invalid.category);
 
+  // Catégorie nécessitant une commande sans commande sélectionnée
+  const missingOrder = validateCreateTicketInput({
+    subject: 'Article manquant',
+    message: 'Il manque un câble dans mon colis.',
+    category: 'DELIVERY',
+  });
+  assert.ok(missingOrder.order);
+  assert.ok(missingOrder.category);
+
+  // Même catégorie avec une commande valide (< 14 jours)
+  const now = new Date('2026-11-28T12:00:00Z');
   assert.deepEqual(
     validateCreateTicketInput({
       subject: 'Article manquant',
       message: 'Il manque un câble dans mon colis.',
       category: 'ORDER',
+      orderId: 12,
+      orderNumber: 'CMD-2026-0012',
+      orderCreatedAt: '2026-11-20T12:00:00Z',
+      now,
     }),
     {}
+  );
+
+  // Commande de plus de 14 jours
+  assert.equal(isOrderEligibleForSupport('2026-11-10T12:00:00Z', now), false);
+  assert.equal(isOrderEligibleForSupport('2026-11-20T12:00:00Z', now), true);
+
+  const expiredOrder = validateCreateTicketInput({
+    subject: 'Demande de retour',
+    message: 'Je souhaite retourner ma commande.',
+    category: 'RETURN_REFUND',
+    orderId: 9,
+    orderNumber: 'CMD-2026-0009',
+    orderCreatedAt: '2026-11-10T12:00:00Z',
+    now,
+  });
+  assert.ok(expiredOrder.order);
+
+  // Catégorie sans commande autorisée
+  assert.deepEqual(
+    validateCreateTicketInput({
+      subject: 'Question produit',
+      message: 'Cet écran est-il compatible VESA ?',
+      category: 'PRODUCT',
+    }),
+    {}
+  );
+
+  // Extraction du message métier du serveur sur 400 / 409
+  assert.equal(
+    getSupportApiErrorMessage(
+      new ApiError('http_error', 'La requête a échoué (409).', 409, {
+        message: 'Le délai de 14 jours pour ouvrir un ticket SAV sur cette commande est dépassé.',
+      })
+    ),
+    'Le délai de 14 jours pour ouvrir un ticket SAV sur cette commande est dépassé.'
   );
 
   assert.ok(validateTicketReply('   '));
