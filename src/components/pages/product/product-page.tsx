@@ -50,7 +50,7 @@ function ProductContent({ product }: { product: ProductDetail }) {
         <ThemedText style={LoginTypography.button}>{spec.key}</ThemedText><ThemedText style={LoginTypography.body}>{spec.value}</ThemedText>
       </View>) : <ThemedText>Aucune caractéristique renseignée.</ThemedText>}
     </ProductSection>
-    <ProductReviews />
+    <ProductReviews key={product.slug} slug={product.slug} />
     <ProductAccessories />
   </>;
 }

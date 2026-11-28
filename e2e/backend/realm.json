@@ -3,13 +3,23 @@
   "enabled": true,
   "sslRequired": "none",
   "registrationAllowed": false,
+  "users": [{
+    "username": "reviewer",
+    "enabled": true,
+    "email": "reviewer@example.test",
+    "emailVerified": true,
+    "firstName": "E2E",
+    "lastName": "Reviewer",
+    "credentials": [{"type": "password", "value": "isolated-e2e-reviewer", "temporary": false}]
+  }],
   "clients": [{
     "clientId": "mobile-app",
     "enabled": true,
     "publicClient": true,
     "standardFlowEnabled": true,
     "directAccessGrantsEnabled": false,
-    "redirectUris": ["ecommerce://auth-callback"],
+    "redirectUris": ["ecommerce://auth-callback", "http://localhost:18081/auth-callback"],
+    "webOrigins": ["http://localhost:18081"],
     "attributes": {"pkce.code.challenge.method": "S256"},
     "protocolMappers": [{
       "name": "api-audience", "protocol": "openid-connect",

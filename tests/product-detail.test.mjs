@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { createApiClient, ApiError } from '../src/services/api-client.ts';
 import { createCatalogApi } from '../src/services/catalog-api.ts';
 import { parseProductDetail } from '../src/services/product-detail.ts';
-import { availability, promotion, variantForValue, productImages, descriptionText, productSlug, clampZoom, unavailableReviews, unavailableAccessories } from '../src/components/pages/product/product-logic.ts';
+import { availability, promotion, variantForValue, productImages, descriptionText, productSlug, clampZoom, unavailableAccessories } from '../src/components/pages/product/product-logic.ts';
 
 // Synthetic fixtures are confined to tests; no application fallback data.
 const variant = { id: 1, sku: 'TEST-B128', values: { Couleur: 'Noir', Capacité: '128 Go' }, priceInclTax: 100, regularPriceInclTax: 120, ecoTaxInclTax: 1, available: true, lowStock: false, images: ['https://example.test/black.jpg'] };
@@ -97,10 +97,9 @@ test('HTML is converted to inert readable text with paragraphs and entities', ()
   assert.equal(descriptionText(null), '');
 });
 
-test('reviews and accessories explicitly report unavailability without fake counts', () => {
-  assert.match(unavailableReviews, /pas encore disponibles/);
+test('accessories explicitly report unavailability without fake counts', () => {
   assert.match(unavailableAccessories, /pas encore disponibles/);
-  assert.doesNotMatch(unavailableReviews + unavailableAccessories, /\d/);
+  assert.doesNotMatch(unavailableAccessories, /\d/);
 });
 
 test('navigation preserves the existing dynamic route and rejects ambiguous parameters', () => {
