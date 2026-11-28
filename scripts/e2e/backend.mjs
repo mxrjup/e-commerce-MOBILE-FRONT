@@ -34,10 +34,13 @@ export async function reset() {
 }
 export async function backend(action) {
   if (action === 'up') {
-    assert.ok(existsSync(resolve(root, '../backend/Dockerfile')), 'Expected the backend repository in ../backend');
+    const context = resolve(root, 'e2e/backend', process.env.E2E_BACKEND_CONTEXT || '../../../backend');
+    assert.ok(existsSync(resolve(context, 'Dockerfile')), `Expected a backend Dockerfile in ${context}`);
     // Keycloak imports the fixture realm at first startup.
     compose(['up', '-d', '--force-recreate', 'keycloak']);
     compose(['up', '-d', '--build']);
+    // Clear cached service addresses after Compose replaces backend containers.
+    compose(['restart', 'gateway']);
     await waitFor('Gateway/catalog', () => json('/api/catalog/products'));
     await waitFor('Cart', () => json('/api/cart'));
     await waitFor('Keycloak', async () => {

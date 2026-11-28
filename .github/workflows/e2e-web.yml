@@ -13,8 +13,18 @@ jobs:
     name: Playwright E2E (web mobile)
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    env:
+      E2E_BACKEND_CONTEXT: ${{ github.workspace }}/.e2e/backend
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout backend C08
+        uses: actions/checkout@v4
+        with:
+          repository: mxrjup/e-commerce-BACK
+          # Backend with the C08 endpoints and Flyway V6 (PR #164).
+          ref: bd52e5b277d11a3be905e51accc58f71eb1d7662
+          path: .e2e/backend
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
