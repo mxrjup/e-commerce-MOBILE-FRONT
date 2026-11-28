@@ -60,6 +60,7 @@ export function createApiClient(baseUrl: string, getAccessToken: () => Promise<s
     }
 
     const headers = new Headers(options.headers);
+    headers.delete('X-Session-Token');
     headers.set('Accept', 'application/json');
 
     if (isCartPath(url.pathname) || url.pathname === '/api/orders/checkout') {

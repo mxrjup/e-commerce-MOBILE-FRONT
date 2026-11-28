@@ -49,6 +49,8 @@ example
 # generated native folders
 /ios
 /android
+/.e2e/
+/artifacts/
 =======
 ### Dependances ###
 node_modules/

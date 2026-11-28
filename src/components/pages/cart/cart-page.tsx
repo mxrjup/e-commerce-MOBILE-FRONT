@@ -141,7 +141,7 @@ export function CartPage() {
                     </Pressable>
 
                     <View style={[styles.quantityBox, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}> 
-                      <ThemedText style={LoginTypography.body}>{item.quantity}</ThemedText>
+                      <ThemedText testID={`cart-quantity-${item.id}`} style={LoginTypography.body}>{item.quantity}</ThemedText>
                     </View>
 
                     <Pressable accessibilityRole="button" accessibilityLabel={`Ajouter 1 ${item.name}`} disabled={busy} onPress={() => void updateQuantity(item.id, item.quantity + 1)} style={({ pressed }) => [styles.stepButton, { opacity: pressed || busy ? 0.7 : 1, borderColor: theme.border }]}>
@@ -160,7 +160,7 @@ export function CartPage() {
 
               <View style={styles.summaryRow}>
                 <ThemedText style={LoginTypography.body}>Sous-total</ThemedText>
-                <ThemedText style={LoginTypography.lead}>{formatPrice(subtotal)}</ThemedText>
+                <ThemedText testID="cart-subtotal" style={LoginTypography.lead}>{formatPrice(subtotal)}</ThemedText>
               </View>
             </View>
           )}

@@ -13,7 +13,7 @@ export function CatalogFilterGroup({ kind, selected, onChange }: {
   const theme = useTheme();
   const options = flattenCategories(data);
 
-  return <Accordion title={catalogLabels[kind]} count={selected ? 1 : 0}
+  return <Accordion testID={`filter-${kind}`} title={catalogLabels[kind]} count={selected ? 1 : 0}
     summary={options.find(({ item }) => item.slug === selected)?.path}>
     {loading ? <View style={styles.loading}>
       <ActivityIndicator color={theme.accent} />
