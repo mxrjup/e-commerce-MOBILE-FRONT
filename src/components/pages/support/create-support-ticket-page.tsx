@@ -18,7 +18,6 @@ import { ControlSize, LoginTypography, Radius, Spacing } from '@/constants/theme
 import { useApi } from '@/hooks/use-api';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
-import { getApiErrorMessage } from '@/services/api-client';
 import {
   getOrderStatusLabel,
   mapOrderHistoryResponse,
@@ -27,8 +26,12 @@ import {
 } from '@/services/order-status';
 import {
   createSupportTicket,
+  getSupportApiErrorMessage,
   getTicketCategoryLabel,
+  isOrderEligibleForSupport,
+  isOrderRequiredCategory,
   parsePositiveTicketId,
+  SUPPORT_WINDOW_DAYS,
   TICKET_CATEGORIES,
   validateCreateTicketInput,
   type CreateTicketFormErrors,
@@ -38,6 +41,7 @@ import {
 type SelectedOrder = {
   id: number;
   orderNumber: string;
+  createdAt?: string | null;
 };
 
 type LoadedOrdersState = {
@@ -85,12 +89,18 @@ export function CreateSupportTicketPage() {
     : undefined;
 
   const defaultSelectedOrder: SelectedOrder | null = matchedPreselectedOrder
-    ? { id: Number(matchedPreselectedOrder.id), orderNumber: matchedPreselectedOrder.orderNumber }
+    ? {
+        id: Number(matchedPreselectedOrder.id),
+        orderNumber: matchedPreselectedOrder.orderNumber,
+        createdAt: matchedPreselectedOrder.createdAt,
+      }
     : preselectedOrderId && preselectedOrderNumber
       ? { id: preselectedOrderId, orderNumber: preselectedOrderNumber }
       : null;
 
   const selectedOrder = orderSelectionTouched ? manualSelectedOrder : defaultSelectedOrder;
+  const effectiveCategory: TicketCategory =
+    !selectedOrder && !categoryTouched && isOrderRequiredCategory(category) ? 'OTHER' : category;
 
   useEffect(() => {
     if (!user) return;
@@ -123,18 +133,32 @@ export function CreateSupportTicketPage() {
   function handleSelectOrder(nextOrder: SelectedOrder | null) {
     setOrderSelectionTouched(true);
     setManualSelectedOrder(nextOrder);
-    if (!categoryTouched) {
-      setCategory(nextOrder ? 'ORDER' : 'OTHER');
+    if (!nextOrder && isOrderRequiredCategory(category)) {
+      setCategory('OTHER');
+      setCategoryTouched(false);
+    } else if (nextOrder && !categoryTouched) {
+      setCategory('ORDER');
     }
+    setErrors((prev) => ({ ...prev, order: undefined, category: undefined }));
   }
 
   async function handleSubmit() {
     if (!user || submitting) return;
 
-    const nextErrors = validateCreateTicketInput({ subject, message, category });
+    const nextErrors = validateCreateTicketInput({
+      subject,
+      message,
+      category: effectiveCategory,
+      orderId: selectedOrder?.id,
+      orderNumber: selectedOrder?.orderNumber,
+      orderCreatedAt: selectedOrder?.createdAt,
+    });
     setErrors(nextErrors);
     setSubmitError('');
 
+    if (nextErrors.order || nextErrors.category) {
+      return;
+    }
     if (nextErrors.subject) {
       subjectRef.current?.focus();
       return;
@@ -149,13 +173,13 @@ export function CreateSupportTicketPage() {
       const created = await createSupportTicket(api, {
         subject: subject.trim(),
         message: message.trim(),
-        category,
+        category: effectiveCategory,
         orderId: selectedOrder?.id,
         orderNumber: selectedOrder?.orderNumber,
       });
       router.replace({ pathname: '/support/[id]', params: { id: String(created.id) } });
     } catch (cause) {
-      setSubmitError(getApiErrorMessage(cause));
+      setSubmitError(getSupportApiErrorMessage(cause));
     } finally {
       setSubmitting(false);
     }
@@ -192,7 +216,7 @@ export function CreateSupportTicketPage() {
                 Nouveau ticket SAV
               </ThemedText>
               <ThemedText themeColor="textSecondary" style={LoginTypography.body}>
-                Sélectionnez une commande si votre demande la concerne, puis décrivez votre besoin.
+                Sélectionnez une commande récente (moins de {SUPPORT_WINDOW_DAYS} jours) si votre demande la concerne, puis décrivez votre besoin.
               </ThemedText>
             </View>
 
@@ -230,7 +254,9 @@ export function CreateSupportTicketPage() {
 
                 <View style={styles.fieldGroup}>
                   <ThemedText style={LoginTypography.label} themeColor="textMuted">
-                    Commande associée (optionnel)
+                    {isOrderRequiredCategory(effectiveCategory)
+                      ? 'Commande associée *'
+                      : 'Commande associée (optionnel)'}
                   </ThemedText>
 
                   <View style={styles.optionsList}>
@@ -284,6 +310,8 @@ export function CreateSupportTicketPage() {
                       orders.map((order) => {
                         const orderNumericId = Number(order.id);
                         const isSelected = selectedOrder?.id === orderNumericId;
+                        const isEligible = isOrderEligibleForSupport(order.createdAt);
+                        const isDisabled = submitting || !isEligible;
                         const dateLabel = order.createdAt
                           ? new Date(order.createdAt).toLocaleDateString('fr-FR', {
                               day: 'numeric',
@@ -296,12 +324,13 @@ export function CreateSupportTicketPage() {
                           <Pressable
                             key={order.id}
                             accessibilityRole="button"
-                            accessibilityState={{ selected: isSelected, disabled: submitting }}
-                            disabled={submitting}
+                            accessibilityState={{ selected: isSelected, disabled: isDisabled }}
+                            disabled={isDisabled}
                             onPress={() =>
                               handleSelectOrder({
                                 id: orderNumericId,
                                 orderNumber: order.orderNumber,
+                                createdAt: order.createdAt,
                               })
                             }
                             style={({ pressed }) => [
@@ -311,6 +340,7 @@ export function CreateSupportTicketPage() {
                                   ? theme.backgroundSelected
                                   : theme.background,
                                 borderColor: isSelected ? theme.accent : theme.borderStrong,
+                                opacity: isEligible ? 1 : 0.55,
                               },
                               pressed && styles.pressed,
                             ]}
@@ -328,11 +358,22 @@ export function CreateSupportTicketPage() {
                                 .toFixed(2)
                                 .replace('.', ',')} €`}
                             </ThemedText>
+                            {!isEligible && (
+                              <ThemedText style={styles.orderOptionMeta} themeColor="textMuted">
+                                {`Délai SAV de ${SUPPORT_WINDOW_DAYS} jours dépassé`}
+                              </ThemedText>
+                            )}
                           </Pressable>
                         );
                       })
                     )}
                   </View>
+
+                  {!!errors.order && (
+                    <ThemedText style={[styles.errorText, { color: theme.danger }]}>
+                      {errors.order}
+                    </ThemedText>
+                  )}
                 </View>
 
                 <View style={styles.fieldGroup}>
@@ -341,22 +382,27 @@ export function CreateSupportTicketPage() {
                   </ThemedText>
                   <View style={styles.categoryGrid}>
                     {TICKET_CATEGORIES.map((item) => {
-                      const active = category === item;
+                      const active = effectiveCategory === item;
+                      const requiresOrder = isOrderRequiredCategory(item);
+                      const categoryDisabled = submitting || (!selectedOrder && requiresOrder);
+
                       return (
                         <Pressable
                           key={item}
                           accessibilityRole="button"
-                          accessibilityState={{ selected: active, disabled: submitting }}
-                          disabled={submitting}
+                          accessibilityState={{ selected: active, disabled: categoryDisabled }}
+                          disabled={categoryDisabled}
                           onPress={() => {
                             setCategoryTouched(true);
                             setCategory(item);
+                            setErrors((prev) => ({ ...prev, category: undefined, order: undefined }));
                           }}
                           style={({ pressed }) => [
                             styles.categoryChip,
                             {
                               backgroundColor: active ? theme.accent : theme.background,
                               borderColor: active ? theme.accent : theme.borderStrong,
+                              opacity: !selectedOrder && requiresOrder ? 0.5 : 1,
                             },
                             pressed && styles.pressed,
                           ]}
@@ -373,6 +419,16 @@ export function CreateSupportTicketPage() {
                       );
                     })}
                   </View>
+                  {!selectedOrder && (
+                    <ThemedText style={styles.helperText} themeColor="textSecondary">
+                      Sélectionnez une commande ci-dessus pour ouvrir un ticket sur une commande, une livraison ou un retour.
+                    </ThemedText>
+                  )}
+                  {!!errors.category && (
+                    <ThemedText style={[styles.errorText, { color: theme.danger }]}>
+                      {errors.category}
+                    </ThemedText>
+                  )}
                 </View>
 
                 <View style={styles.fieldGroup}>
