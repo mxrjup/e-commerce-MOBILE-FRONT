@@ -104,6 +104,13 @@ export function SideMenu() {
                 style={({ pressed }) => [styles.menuItem, { borderColor: theme.border, borderWidth: 1, backgroundColor: inProfile ? theme.backgroundSelected : theme.background }, pressed && styles.dimmed]}>
                 <ThemedText style={LoginTypography.button}>Profil</ThemedText>
               </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: inSupport }}
+                onPress={() => { close(); router.navigate('/support'); }}
+                style={({ pressed }) => [styles.menuItem, { borderColor: theme.border, borderWidth: 1, backgroundColor: inSupport ? theme.backgroundSelected : theme.background }, pressed && styles.dimmed]}>
+                <ThemedText style={LoginTypography.button}>SAV</ThemedText>
+              </Pressable>
               <View style={styles.spacer} />
               {user ? (
                 <Pressable
@@ -133,13 +140,6 @@ export function SideMenu() {
                       pressed && styles.dimmed,
                     ]}>
                     <ThemedText style={LoginTypography.button}>Créer un compte</ThemedText>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: inSupport }}
-                    onPress={() => { close(); router.navigate('/support'); }}
-                    style={({ pressed }) => [styles.menuItem, { borderColor: theme.border, borderWidth: 1, backgroundColor: inSupport ? theme.backgroundSelected : theme.background }, pressed && styles.dimmed]}>
-                    <ThemedText style={LoginTypography.button}>SAV</ThemedText>
                   </Pressable>
                 </View>
               )}
