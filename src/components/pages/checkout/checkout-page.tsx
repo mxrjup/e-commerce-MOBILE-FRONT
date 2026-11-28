@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -22,7 +22,7 @@ import {
   type AddressPayload,
 } from '@/services/user-profile-api';
 import { prepareCheckoutAddressPayload, selectCheckoutAddress } from '@/services/checkout-address';
-import { checkoutFailureMessage, isSafeStripeCheckoutUrl } from '@/services/checkout-payment';
+import { CHECKOUT_RETURN_PREFIX, checkoutFailureMessage, checkoutReturnRoute, isSafeStripeCheckoutUrl } from '@/services/checkout-payment';
 
 type DeliveryMode = 'STANDARD' | 'EXPRESS' | 'CLICK_AND_COLLECT' | 'RELAY_POINT';
 
@@ -133,10 +133,17 @@ export function CheckoutPage() {
       });
 
       if (isSafeStripeCheckoutUrl(response?.stripeCheckoutUrl)) {
-        await WebBrowser.openBrowserAsync(response.stripeCheckoutUrl, {
-          dismissButtonStyle: 'cancel',
-          showInRecents: true,
-        });
+        if (Platform.OS === 'web') {
+          await WebBrowser.openBrowserAsync(response.stripeCheckoutUrl);
+        } else {
+          // An auth session, not a plain browser: it closes by itself when Stripe's return page
+          // opens ecommerce://checkout-..., and hands us that link to show the right screen.
+          const result = await WebBrowser.openAuthSessionAsync(response.stripeCheckoutUrl, CHECKOUT_RETURN_PREFIX, {
+            showInRecents: true,
+          });
+          const route = result.type === 'success' ? checkoutReturnRoute(result.url) : null;
+          if (route) router.navigate(route);
+        }
       } else {
         throw new Error('Le lien de paiement Stripe est invalide ou indisponible.');
       }
