@@ -1,3 +1,5 @@
+import { ApiError, getApiErrorMessage } from '@/services/api-client';
+
 export type TicketCategory =
   | 'ORDER'
   | 'DELIVERY'
@@ -62,9 +64,13 @@ export type CreateTicketFormInput = {
   subject: string;
   message: string;
   category: TicketCategory;
+  orderId?: number | null;
+  orderNumber?: string | null;
+  orderCreatedAt?: string | null;
+  now?: Date;
 };
 
-export type CreateTicketFormErrors = Partial<Record<'subject' | 'message', string>>;
+export type CreateTicketFormErrors = Partial<Record<'subject' | 'message' | 'category' | 'order', string>>;
 
 type HttpClient = {
   get: <T>(path: string, options?: { signal?: AbortSignal }) => Promise<T>;
@@ -79,6 +85,26 @@ export const TICKET_CATEGORIES: readonly TicketCategory[] = [
   'ACCOUNT',
   'OTHER',
 ];
+
+export const ORDER_REQUIRED_CATEGORIES: readonly TicketCategory[] = [
+  'ORDER',
+  'DELIVERY',
+  'RETURN_REFUND',
+];
+
+export const SUPPORT_WINDOW_DAYS = 14;
+const SUPPORT_WINDOW_MS = SUPPORT_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+
+export function isOrderRequiredCategory(category: TicketCategory): boolean {
+  return ORDER_REQUIRED_CATEGORIES.includes(category);
+}
+
+export function isOrderEligibleForSupport(createdAt: string | null | undefined, now: Date = new Date()): boolean {
+  if (!createdAt) return true;
+  const parsedMs = Date.parse(createdAt);
+  if (!Number.isFinite(parsedMs)) return true;
+  return now.getTime() - parsedMs <= SUPPORT_WINDOW_MS;
+}
 
 function readString(value: unknown): string {
   return typeof value === 'string' ? value : '';
@@ -174,6 +200,16 @@ export function validateCreateTicketInput(input: CreateTicketFormInput): CreateT
   const errors: CreateTicketFormErrors = {};
   const subject = input.subject.trim();
   const message = input.message.trim();
+  const hasOrder =
+    (typeof input.orderId === 'number' && Number.isFinite(input.orderId) && input.orderId > 0) ||
+    (typeof input.orderNumber === 'string' && input.orderNumber.trim().length > 0);
+
+  if (isOrderRequiredCategory(input.category) && !hasOrder) {
+    errors.order = `Sélectionnez une commande pour la catégorie « ${getTicketCategoryLabel(input.category)} ».`;
+    errors.category = 'Cette catégorie nécessite une commande associée.';
+  } else if (hasOrder && input.orderCreatedAt && !isOrderEligibleForSupport(input.orderCreatedAt, input.now)) {
+    errors.order = `Le délai de ${SUPPORT_WINDOW_DAYS} jours pour ouvrir un ticket SAV sur cette commande est dépassé.`;
+  }
 
   if (!subject) {
     errors.subject = 'Le sujet du ticket est obligatoire.';
@@ -199,6 +235,24 @@ export function validateTicketReply(rawContent: string): string | undefined {
     return 'Le message ne doit pas dépasser 5 000 caractères.';
   }
   return undefined;
+}
+
+export function getSupportApiErrorMessage(cause: unknown, timedOut = false): string {
+  if (cause instanceof ApiError && cause.code === 'http_error' && (cause.status === 400 || cause.status === 409)) {
+    if (cause.data && typeof cause.data === 'object') {
+      const payload = cause.data as Record<string, unknown>;
+      const serverMessage =
+        typeof payload.message === 'string'
+          ? payload.message.trim()
+          : typeof payload.detail === 'string'
+            ? payload.detail.trim()
+            : '';
+      if (serverMessage) {
+        return serverMessage;
+      }
+    }
+  }
+  return getApiErrorMessage(cause, timedOut);
 }
 
 export function mapTicketMessageResponse(raw: unknown): TicketMessage {
