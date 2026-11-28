@@ -1,0 +1,81 @@
+# APK Android de l'application (profil « preview » de eas.json).
+#
+# Le build tourne sur le runner GitHub (eas build --local), pas sur les serveurs
+# d'Expo : il ne consomme pas le quota de builds du plan gratuit. Le compte Expo
+# (EXPO_TOKEN) ne sert qu'a recuperer la cle de signature Android stockee chez
+# Expo, la meme que pour les builds precedents.
+#
+# Declencheurs :
+#   tag vX.Y.Z  : l'APK de la release (CLAUDE.md : tags sur main uniquement)
+#   manuel      : Actions -> Build Android APK -> Run workflow, sur la branche voulue
+#   Pull Request qui touche ce workflow ou la configuration native : verifie que
+#                le build passe encore avant le merge
+# Plus de build a chaque push sur dev : c'est ce qui epuisait le quota.
+#
+# L'APK est un artefact du run (onglet Summary -> Artifacts), garde 30 jours.
+name: Build Android APK
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+  pull_request:
+    branches: [dev, main]
+    paths:
+      - .github/workflows/build-apk.yml
+      - app.json
+      - eas.json
+      - package.json
+      - package-lock.json
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-apk-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      # Gradle demande un JDK 17 ; le SDK Android est deja sur le runner.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build Android APK (local)
+        run: >-
+          eas build --local --platform android --profile preview
+          --non-interactive --output "$RUNNER_TEMP/app.apk"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          # Le nom d'un tag (v1.2.0), sinon le numero du run : une PR a pour ref
+          # « 22/merge », et un « / » est refuse dans un nom d'artefact.
+          name: apk-${{ github.ref_type == 'tag' && github.ref_name || format('run-{0}', github.run_number) }}
+          path: ${{ runner.temp }}/app.apk
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,47 @@
+name: Mobile Web E2E
+on:
+  pull_request:
+    branches: [dev]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mobile-web-e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  playwright:
+    name: Playwright E2E (web mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      E2E_BACKEND_CONTEXT: ${{ github.workspace }}/.e2e/backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout backend C08
+        uses: actions/checkout@v4
+        with:
+          repository: mxrjup/e-commerce-BACK
+          # Backend dev with the C08 endpoints and Flyway V6 (squash of PR #164).
+          ref: 83ba76835c2bca7f6d05b48c288da70a2ca73986
+          path: .e2e/backend
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e:backend -- up
+      - run: npm run test:e2e
+      - name: Backend logs
+        if: always()
+        run: npm run e2e:backend -- logs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-results
+          path: artifacts/e2e/
+          retention-days: 14
+      - name: Stop isolated backend
+        if: always()
+        run: npm run e2e:backend -- down

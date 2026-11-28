@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="22 7 96 171" fill="currentColor" role="img" aria-labelledby="logTitle">
+  <title id="logTitle">log</title>
+  <!-- Buche vue de trois quarts : cernes sur la face coupee, croquee sur le flanc droit -->
+  <path fill-rule="evenodd" d="
+    M 26 62
+    A 44 15.4 0 0 1 114 62
+    L 114 84.3
+    A 26 26 0 0 0 114 135.7
+    L 114 158
+    A 44 15.4 0 0 1 26 158
+    Z
+    M 33.5 62 A 36.5 12.8 0 1 0 106.5 62 A 36.5 12.8 0 1 0 33.5 62 Z
+    M 37.5 62 A 32.5 11.4 0 1 0 102.5 62 A 32.5 11.4 0 1 0 37.5 62 Z
+    M 47 62   A 23 8.05 0 1 0 93 62    A 23 8.05 0 1 0 47 62   Z
+    M 51 62   A 19 6.65 0 1 0 89 62    A 19 6.65 0 1 0 51 62   Z
+    M 61 62   A 9 3.15 0 1 0 79 62     A 9 3.15 0 1 0 61 62    Z
+    M 65 62   A 5 1.75 0 1 0 75 62     A 5 1.75 0 1 0 65 62    Z
+  "/>
+  <!-- La pousse : equivalent de la feuille d'Apple -->
+  <path d="M 88 42 C 88 27 96 15 111 11 C 113 27 105 39 88 42 Z"/>
+</svg>

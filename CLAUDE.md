@@ -1,6 +1,6 @@
-# Project Guidelines — e-commerce
+# Project Guidelines — e-commerce mobile frontend
 
-These rules apply to every contributor, human or AI agent, working on any of the e-commerce repositories:
+These rules apply to every contributor, human or AI agent, working on `e-commerce-MOBILE-FRONT`, the React Native mobile frontend. Related repositories provide integration context:
 
 | Repository | Scope |
 |---|---|
@@ -9,7 +9,63 @@ These rules apply to every contributor, human or AI agent, working on any of the
 | `e-commerce-BACK` | Back-end / API |
 | `e-commerce-INFRA` | Infrastructure, CI/CD, deployment |
 
-`CLAUDE.md` and `AGENT.md` are **identical** and must stay identical in all four repositories. Any change to one must be applied to both files, in all four repos.
+`CLAUDE.md` and `AGENT.md` must stay identical **within this repository**. Update both together. Mobile-specific guidance must not be copied into the web, backend, or infrastructure repositories automatically.
+
+## Mobile implementation contract
+
+### Prepared design is the source of truth
+
+- Implement the system design already prepared for this project. Follow its architecture, application flows, service boundaries, authentication model, API contracts, and data ownership.
+- Follow the prepared UI design system for colors, typography, spacing, icons, components, and screen layouts wherever those artifacts are provided. Do not confuse a system architecture document with a visual specification.
+- Before implementation, locate and read the relevant design documents, diagrams, mockups, and API specifications. Record their actual paths or links in the implementation notes or PR; do not invent a design file location.
+- At the time this guidance was customized, the workspace contained these two guidance files and an empty `mobile/` directory. No prepared design artifact or application manifest was available to verify. This is a snapshot, not a permanent description: inspect the current repository before each task.
+- If a required design artifact is unavailable, request its location before making decisions that depend on it. Continue independent work where possible. Do not create a replacement architecture or visual identity from assumptions.
+- Reuse approved design tokens and shared components. Put repeated visual values in the existing theme/token layer rather than duplicating them across screens.
+- When native platform behavior requires a design adaptation, document the reason and keep the intended flow and visual hierarchy. Raise material design or contract conflicts before changing them.
+
+### Stack and project structure
+
+- **React Native is the required mobile framework.** Build native mobile screens, not a browser UI wrapped in a WebView.
+- Inspect `mobile/` and the repository root for the application manifest, lockfile, configuration, and existing structure before adding files. Extend the established app instead of creating a second scaffold.
+- Use TypeScript for new application code and typed component props, navigation parameters, and API boundaries. Avoid `any`; validate untrusted data at boundaries.
+- Follow the prepared design and installed project configuration for Expo versus bare React Native, routing, state management, styling, networking, and testing. Do not select or replace these libraries solely from personal preference.
+- Use the package manager indicated by the lockfile and the versions established by the project. Do not add dependencies or upgrade the framework without an explicit request.
+- Keep screens focused on composing UI and connecting behavior. Keep reusable UI, feature logic, API access, and platform adapters separate using the existing folder conventions; do not impose a new directory tree without evidence.
+- Use functional components and hooks. Keep effects scoped, clean up subscriptions, and handle cancellation or stale responses when screens unmount or inputs change.
+- Use React Native primitives and the existing component library. Do not use DOM elements, browser storage, or browser-only APIs in native code.
+
+### Mobile UX and accessibility
+
+- Cover loading, empty, error, retry, success, and offline states where relevant; do not leave screens dependent on a happy-path API response.
+- Respect safe areas, keyboard visibility, platform back behavior, and the configured navigation model. Keep inputs and primary actions usable on small screens.
+- Support text scaling, accessible labels and roles, adequate contrast, and usable touch targets. Do not communicate state by color alone.
+- Preserve form input after recoverable errors and prevent duplicate submissions. Show actionable messages without exposing internal errors or credentials.
+- Follow approved navigation and authentication flows, including session expiry and deep links when specified. Do not introduce routes or permissions outside the requested feature.
+- Use virtualized lists for large catalogs and order lists, stable item keys, and appropriately sized images. Measure performance before adding memoization or other optimization complexity.
+- Verify changed behavior on Android and iOS where supported by the project. Clearly report any platform that could not be exercised.
+
+### API integration, authentication, and commerce
+
+- Integrate with `e-commerce-BACK` through the documented API contracts. Keep request configuration, authentication handling, and error mapping in the established API layer, not duplicated across screens.
+- Treat backend prices, discounts, stock, shipping costs, order totals, payment status, and authorization decisions as authoritative. Client validation improves UX but never replaces server validation.
+- Preserve the API's monetary representation and currency semantics. Avoid floating-point calculations for payable amounts; use approved formatting for display.
+- Follow the prepared authentication design. If it specifies OIDC/OAuth, use the approved native client flow and redirect configuration; never embed a client secret in the app.
+- Store sensitive session material only through the project's approved platform-backed secure storage. Do not place credentials in plain persistent storage, logs, analytics, or committed fixtures.
+- Mobile bundles and client environment variables are inspectable. Keep backend secrets and privileged operations on the server; provide only placeholders in `.env.example`.
+- Handle expired sessions, network failures, timeouts, and API validation errors consistently. Clear user-specific cached data on logout or account changes.
+- Do not blindly retry checkout, payment, or order-creation requests. Use the backend's documented idempotency and recovery behavior to prevent duplicate operations.
+- Do not persist raw payment details. Use only the payment flow and provider integration approved in the system design.
+- Keep mocks explicit and confined to development/tests; never silently substitute mock data for a failed production request.
+
+### Validation and completion
+
+- Discover commands from the actual package scripts and CI configuration. Run commands from the application directory; do not invent `npm` scripts or claim a scaffold exists before checking.
+- For code changes, run the relevant typecheck, lint, tests, and available build checks. Add focused tests for changed behavior using the established test tools.
+- For UI changes, compare the result against the prepared design and exercise relevant loading/error states, keyboard behavior, navigation, and accessibility. Attach screenshots or recordings to the PR when available.
+- Prioritize coverage for authentication/session handling, cart changes, checkout submission, and API failure recovery when those features are in scope.
+- Never claim native builds or simulator/device checks passed unless they ran. If the environment lacks a required SDK, simulator, device, or signing setup, report the precise validation gap.
+- For documentation-only changes, review the diff, check formatting, and verify `AGENT.md` and `CLAUDE.md` remain identical; application tests are unnecessary.
+- Finish with the changed files, behavior delivered, checks actually run, and remaining blockers or platform gaps. Do not publish builds, submit to stores, or trigger OTA updates without an explicit request.
 
 ---
 
@@ -77,7 +133,7 @@ git push -u origin feature/my-feature
 1. Make sure `dev` is green (build + tests pass) and contains everything planned for the release.
 2. Open a Pull Request **`dev` → `main`** titled `release: vX.Y.Z`.
 3. Once approved, merge it with a **merge commit** (no squash — keep the history of `dev`).
-4. Tag the merge commit on `main` and push the tag (see §4). **The tag triggers the production deployment.**
+4. Tag the merge commit on `main` and push the tag (see §4) when explicitly authorized. Verify the mobile CI release configuration before assuming what the tag triggers.
 
 ### Hotfix (urgent prod bug)
 
@@ -167,7 +223,8 @@ chore(deps): bump express from 4.19.2 to 4.21.0
   - **MINOR**: new backwards-compatible feature (`feat`)
   - **PATCH**: backwards-compatible fix (`fix`, `perf`, hotfixes)
 - **Tags are only created on `main`**, on the release/hotfix merge commit. Never tag `dev` or a work branch.
-- **Pushing a `v*` tag is what triggers the production deployment.** Merging into `main` alone does not deploy.
+- Inspect the mobile CI configuration to determine what a `v*` tag triggers. A release tag, signed native build, store submission, store rollout, and OTA update are distinct steps; do not assume a tag publishes the app.
+- Keep the app's user-visible version and platform build identifiers consistent with the configured mobile release process. Store credentials and signing material must remain outside version control.
 - Always use **annotated** tags:
 
 ```bash
@@ -229,7 +286,7 @@ AI agents working in these repositories **must**:
 5. Never merge a Pull Request themselves unless explicitly asked.
 6. Write commit messages and PR titles in Conventional Commits format.
 7. Keep changes scoped to the task. No drive-by refactors or unrelated formatting.
-8. Run the project's build, linter and tests before committing, and report failures honestly instead of hiding or skipping them.
+8. Run the validation appropriate to the change as described in the mobile implementation contract, and report failures or unavailable checks honestly.
 9. Never commit secrets or `.env` files; never print secret values in logs or PR descriptions.
 10. When unsure about a destructive or irreversible action, stop and ask a human.
 11. Keep `CLAUDE.md` and `AGENT.md` identical; if one is updated, update the other in the same commit.
